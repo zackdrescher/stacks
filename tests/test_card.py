@@ -1,0 +1,95 @@
+"""Tests for the Card class."""
+
+import pytest
+from pydantic import ValidationError
+
+from stacks.card import Card
+
+
+class TestCard:
+    """Test cases for the Card class."""
+
+    def test_card_creation_with_valid_name(self) -> None:
+        """Test creating a card with a valid name."""
+        card = Card(name="Lightning Bolt")
+        assert card.name == "Lightning Bolt"
+
+    def test_card_creation_with_name_whitespace_stripped(self) -> None:
+        """Test that whitespace is stripped from card names."""
+        card = Card(name="  Lightning Bolt  ")
+        assert card.name == "Lightning Bolt"
+
+    def test_card_creation_with_empty_name_raises_error(self) -> None:
+        """Test that creating a card with an empty name raises ValueError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Card(name="")
+
+        error = exc_info.value.errors()[0]
+        assert error["type"] == "value_error"
+        assert "Card name cannot be empty" in str(exc_info.value)
+
+    def test_card_creation_with_whitespace_only_name_raises_error(self) -> None:
+        """Test creating a card with whitespace-only name raises ValueError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Card(name="   ")
+
+        error = exc_info.value.errors()[0]
+        assert error["type"] == "value_error"
+        assert "Card name cannot be empty" in str(exc_info.value)
+
+    def test_card_creation_without_name_raises_error(self) -> None:
+        """Test that creating a card without a name raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Card(name=None)  # type: ignore[arg-type]
+
+        error = exc_info.value.errors()[0]
+        assert error["type"] == "missing" or error["type"] == "string_type"
+        assert error["loc"] == ("name",)
+
+    def test_card_equality(self) -> None:
+        """Test that cards with the same name are equal."""
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Lightning Bolt")
+        assert card1 == card2
+
+    def test_card_inequality(self) -> None:
+        """Test that cards with different names are not equal."""
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        assert card1 != card2
+
+    def test_card_repr(self) -> None:
+        """Test the string representation of a card."""
+        card = Card(name="Lightning Bolt")
+        repr_str = repr(card)
+        assert "Lightning Bolt" in repr_str
+        assert "Card" in repr_str
+
+    def test_card_name_immutability(self) -> None:
+        """Test that card name can be modified after creation."""
+        card = Card(name="Lightning Bolt")
+        card.name = "Counterspell"
+        assert card.name == "Counterspell"
+
+    def test_card_with_unicode_name(self) -> None:
+        """Test creating a card with unicode characters in the name."""
+        card = Card(name="Æther Vial")
+        assert card.name == "Æther Vial"
+
+    def test_card_with_long_name(self) -> None:
+        """Test creating a card with a very long name."""
+        long_name = "A" * 200
+        card = Card(name=long_name)
+        assert card.name == long_name
+
+    def test_card_model_dump(self) -> None:
+        """Test serializing a card to a dictionary."""
+        card = Card(name="Lightning Bolt")
+        data = card.model_dump()
+        assert data == {"name": "Lightning Bolt"}
+
+    def test_card_model_validate(self) -> None:
+        """Test creating a card from a dictionary."""
+        data = {"name": "Lightning Bolt"}
+        card = Card.model_validate(data)
+        assert card.name == "Lightning Bolt"

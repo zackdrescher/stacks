@@ -9,6 +9,9 @@ readme = "README.md"
 python = "^3.12"
 duckdb = "^1.2.1"
 python-dotenv = "^1.0.1"
+pydantic = "^2.11.7"
+pytest = "^8.4.1"
+pytest-cov = "^6.2.1"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -19,3 +22,21 @@ mypy = "^1.15.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--disable-warnings",
+    "--cov=stacks",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-fail-under=80",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]

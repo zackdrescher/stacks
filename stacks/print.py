@@ -1,10 +1,11 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
 from .card import Card
 
 
-@dataclass
 class Print(Card):
+    """A specific print of a Magic: The Gathering card."""
+
     set: str
     foil: bool = False
     condition: str | None = None
