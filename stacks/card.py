@@ -7,7 +7,23 @@ from slugify import slugify
 class Card(BaseModel):
     """A Magic: The Gathering card with a name."""
 
+    model_config = {"frozen": True}
+
     name: str
+
+    def identity(self) -> tuple:
+        """Get a tuple representing the card's identity."""
+        return (self.slug,)
+
+    def __hash__(self) -> int:
+        """Make Card hashable based on its name."""
+        return hash(self.identity())
+
+    def __eq__(self, other: object) -> bool:
+        """Cards are equal if they have the same name."""
+        if not isinstance(other, Card):
+            return False
+        return self.identity() == other.identity()
 
     @computed_field
     def slug(self) -> str:

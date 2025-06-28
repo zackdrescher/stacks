@@ -58,6 +58,64 @@ class TestCard:
         card2 = Card(name="Counterspell")
         assert card1 != card2
 
+    def test_card_equality_with_different_objects(self) -> None:
+        """Test that cards are not equal to non-Card objects."""
+        card = Card(name="Lightning Bolt")
+        assert card != "Lightning Bolt"
+        assert card != 42
+        assert card is not None
+        assert card != {"name": "Lightning Bolt"}
+
+    def test_card_identity(self) -> None:
+        """Test the identity method returns the correct tuple."""
+        card = Card(name="Lightning Bolt")
+        identity = card.identity()
+        assert isinstance(identity, tuple)
+        assert identity == ("lightning-bolt",)
+
+    def test_card_identity_with_special_characters(self) -> None:
+        """Test identity method with special characters in name."""
+        card = Card(name="Jace's Ingenuity")
+        identity = card.identity()
+        assert identity == ("jace-s-ingenuity",)
+
+    def test_card_hash_consistency(self) -> None:
+        """Test that hash is consistent for cards with same identity."""
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Lightning Bolt")
+        assert hash(card1) == hash(card2)
+
+    def test_card_hash_different_for_different_cards(self) -> None:
+        """Test that hash is different for cards with different identities."""
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        assert hash(card1) != hash(card2)
+
+    def test_card_hashable_in_set(self) -> None:
+        """Test that cards can be used in sets and as dict keys."""
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Lightning Bolt")
+        card3 = Card(name="Counterspell")
+
+        # Test in set
+        card_set = {card1, card2, card3}
+        assert len(card_set) == 2  # card1 and card2 should be the same
+
+        # Test as dict keys
+        card_dict = {card1: "red", card2: "also red", card3: "blue"}
+        assert len(card_dict) == 2
+        assert card_dict[card1] == "also red"  # card2 overwrote card1
+
+    def test_card_equality_based_on_identity(self) -> None:
+        """Test that equality is based on identity method."""
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Lightning Bolt")
+
+        # Verify they have the same identity
+        assert card1.identity() == card2.identity()
+        # Verify they are equal
+        assert card1 == card2
+
     def test_card_repr(self) -> None:
         """Test the string representation of a card."""
         card = Card(name="Lightning Bolt")
@@ -66,10 +124,16 @@ class TestCard:
         assert "Card" in repr_str
 
     def test_card_name_immutability(self) -> None:
-        """Test that card name can be modified after creation."""
+        """Test that card name cannot be modified after creation."""
         card = Card(name="Lightning Bolt")
-        card.name = "Counterspell"
-        assert card.name == "Counterspell"
+        with pytest.raises(ValidationError) as exc_info:
+            card.name = "Counterspell"  # type: ignore[misc]
+
+        # The card name should remain unchanged
+        assert card.name == "Lightning Bolt"
+        # Check that the error is about the model being frozen
+        error_msg = str(exc_info.value).lower()
+        assert "frozen" in error_msg or "immutable" in error_msg
 
     def test_card_with_unicode_name(self) -> None:
         """Test creating a card with unicode characters in the name."""
@@ -146,10 +210,16 @@ class TestCard:
         expected = {"name": "Lightning Bolt", "slug": "lightning-bolt"}
         assert data == expected
 
-    def test_card_slug_updates_when_name_changes(self) -> None:
-        """Test that slug updates when the name is changed."""
+    def test_card_immutability_comprehensive(self) -> None:
+        """Test that cards are completely immutable after creation."""
         card = Card(name="Lightning Bolt")
-        assert card.slug == "lightning-bolt"
+        original_name = card.name
+        original_slug = card.slug
 
-        card.name = "Counterspell"
-        assert card.slug == "counterspell"
+        # Try to modify name - should raise ValidationError
+        with pytest.raises(ValidationError):
+            card.name = "Counterspell"  # type: ignore[misc]
+
+        # Verify nothing changed
+        assert card.name == original_name
+        assert card.slug == original_slug

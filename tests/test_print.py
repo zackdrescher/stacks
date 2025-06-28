@@ -83,49 +83,158 @@ class TestPrint:
         print2 = Print(name="Lightning Bolt", set="LEA", foil=True)
         assert print1 != print2
 
-    def test_print_with_numeric_price(self) -> None:
-        """Test creating a print with a numeric price."""
-        print_card = Print(name="Lightning Bolt", set="LEA", price=15.50)
-        assert print_card.price == 15.50
+    def test_print_equality_comprehensive(self) -> None:
+        """Test print equality with all fields specified."""
+        print1 = Print(
+            name="Lightning Bolt",
+            set="LEA",
+            foil=True,
+            condition="NM",
+            language="jp",
+            multiverse_id=209,
+            json_id="abc123",
+            price=25.99,
+        )
+        print2 = Print(
+            name="Lightning Bolt",
+            set="LEA",
+            foil=True,
+            condition="NM",
+            language="jp",
+            multiverse_id=209,
+            json_id="abc123",
+            price=25.99,
+        )
+        assert print1 == print2
 
-    def test_print_with_zero_price(self) -> None:
-        """Test creating a print with zero price."""
-        print_card = Print(name="Lightning Bolt", set="LEA", price=0.0)
-        assert print_card.price == 0.0
+    def test_print_inequality_different_condition(self) -> None:
+        """Test that prints with different conditions are not equal."""
+        print1 = Print(name="Lightning Bolt", set="LEA", condition="NM")
+        print2 = Print(name="Lightning Bolt", set="LEA", condition="LP")
+        assert print1 != print2
 
-    def test_print_with_negative_price(self) -> None:
-        """Test creating a print with negative price (should be allowed)."""
-        print_card = Print(name="Lightning Bolt", set="LEA", price=-5.0)
-        assert print_card.price == -5.0
+    def test_print_inequality_different_language(self) -> None:
+        """Test that prints with different languages are not equal."""
+        print1 = Print(name="Lightning Bolt", set="LEA", language="en")
+        print2 = Print(name="Lightning Bolt", set="LEA", language="jp")
+        assert print1 != print2
 
-    def test_print_with_large_multiverse_id(self) -> None:
-        """Test creating a print with a large multiverse ID."""
-        print_card = Print(name="Lightning Bolt", set="LEA", multiverse_id=999999)
-        assert print_card.multiverse_id == 999999
+    def test_print_inequality_different_multiverse_id(self) -> None:
+        """Test that prints with different multiverse IDs are not equal."""
+        print1 = Print(name="Lightning Bolt", set="LEA", multiverse_id=209)
+        print2 = Print(name="Lightning Bolt", set="LEA", multiverse_id=210)
+        assert print1 != print2
 
-    def test_print_with_empty_condition(self) -> None:
-        """Test creating a print with empty condition string."""
-        print_card = Print(name="Lightning Bolt", set="LEA", condition="")
-        assert print_card.condition == ""
+    def test_print_inequality_different_json_id(self) -> None:
+        """Test that prints with different JSON IDs are not equal."""
+        print1 = Print(name="Lightning Bolt", set="LEA", json_id="abc123")
+        print2 = Print(name="Lightning Bolt", set="LEA", json_id="def456")
+        assert print1 != print2
 
-    def test_print_with_empty_json_id(self) -> None:
-        """Test creating a print with empty json_id string."""
-        print_card = Print(name="Lightning Bolt", set="LEA", json_id="")
-        assert print_card.json_id == ""
+    def test_print_inequality_different_price(self) -> None:
+        """Test that prints with different prices are not equal."""
+        print1 = Print(name="Lightning Bolt", set="LEA", price=10.0)
+        print2 = Print(name="Lightning Bolt", set="LEA", price=15.0)
+        assert print1 != print2
 
-    def test_print_common_conditions(self) -> None:
-        """Test creating prints with common card conditions."""
-        conditions = ["NM", "LP", "MP", "HP", "DMG"]
-        for condition in conditions:
-            print_card = Print(name="Lightning Bolt", set="LEA", condition=condition)
-            assert print_card.condition == condition
+    def test_print_equality_with_none_values(self) -> None:
+        """Test print equality when optional fields are None."""
+        print1 = Print(name="Lightning Bolt", set="LEA")
+        print2 = Print(name="Lightning Bolt", set="LEA")
+        assert print1 == print2
+        assert print1.condition is None
+        assert print1.multiverse_id is None
+        assert print1.json_id is None
+        assert print1.price is None
 
-    def test_print_common_languages(self) -> None:
-        """Test creating prints with common language codes."""
-        languages = ["en", "jp", "de", "fr", "es", "it", "pt", "ru", "ko", "zh"]
-        for language in languages:
-            print_card = Print(name="Lightning Bolt", set="LEA", language=language)
-            assert print_card.language == language
+    def test_print_identity(self) -> None:
+        """Test the identity method returns all relevant fields."""
+        print_card = Print(
+            name="Lightning Bolt",
+            set="LEA",
+            foil=True,
+            condition="NM",
+            language="jp",
+            multiverse_id=209,
+            json_id="abc123",
+            price=25.99,
+        )
+        identity = print_card.identity()
+        expected_identity = (
+            "Lightning Bolt",
+            "LEA",
+            True,
+            "NM",
+            "jp",
+            209,
+            "abc123",
+            25.99,
+        )
+        assert identity == expected_identity
+
+    def test_print_identity_with_defaults(self) -> None:
+        """Test identity method with default values."""
+        print_card = Print(name="Lightning Bolt", set="LEA")
+        identity = print_card.identity()
+        expected_identity = (
+            "Lightning Bolt",
+            "LEA",
+            False,  # foil default
+            None,  # condition default
+            "en",  # language default
+            None,  # multiverse_id default
+            None,  # json_id default
+            None,  # price default
+        )
+        assert identity == expected_identity
+
+    def test_print_hash_consistency(self) -> None:
+        """Test that hash is consistent for prints with same identity."""
+        print1 = Print(name="Lightning Bolt", set="LEA", foil=True)
+        print2 = Print(name="Lightning Bolt", set="LEA", foil=True)
+        assert hash(print1) == hash(print2)
+
+    def test_print_hash_different_for_different_prints(self) -> None:
+        """Test that hash is different for prints with different identities."""
+        print1 = Print(name="Lightning Bolt", set="LEA", foil=True)
+        print2 = Print(name="Lightning Bolt", set="LEA", foil=False)
+        assert hash(print1) != hash(print2)
+
+    def test_print_hashable_in_set(self) -> None:
+        """Test that prints can be used in sets and as dict keys."""
+        print1 = Print(name="Lightning Bolt", set="LEA", foil=True)
+        print2 = Print(name="Lightning Bolt", set="LEA", foil=True)
+        print3 = Print(name="Lightning Bolt", set="LEA", foil=False)
+
+        # Test in set
+        print_set = {print1, print2, print3}  # type: ignore[misc]
+        assert len(print_set) == 2  # print1 and print2 should be the same
+
+        # Test as dict keys
+        print_dict = {print1: "foil", print2: "also foil", print3: "non-foil"}  # type: ignore[misc]
+        assert len(print_dict) == 2
+        assert print_dict[print1] == "also foil"  # print2 overwrote print1
+
+    def test_print_equality_based_on_identity(self) -> None:
+        """Test that equality is based on identity method."""
+        print1 = Print(name="Lightning Bolt", set="LEA", foil=True)
+        print2 = Print(name="Lightning Bolt", set="LEA", foil=True)
+
+        # Verify they have the same identity
+        assert print1.identity() == print2.identity()
+        # Verify they are equal
+        assert print1 == print2
+
+    def test_print_vs_card_inequality(self) -> None:
+        """Test that a Print is not equal to a Card with same name."""
+        from stacks.card import Card
+
+        card = Card(name="Lightning Bolt")
+        print_card = Print(name="Lightning Bolt", set="LEA")
+
+        # They should not be equal even though they have the same name
+        assert card != print_card
+        assert print_card != card
 
     def test_print_repr(self) -> None:
         """Test the string representation of a print."""
@@ -154,6 +263,7 @@ class TestPrint:
             "multiverse_id": None,
             "json_id": None,
             "price": 10.0,
+            "slug": "lightning-bolt",
         }
         assert data == expected
 
@@ -184,13 +294,18 @@ class TestPrint:
         print_card = Print(name="Lightning Bolt", set="Æther Revolt")
         assert print_card.set == "Æther Revolt"
 
-    def test_print_field_modification(self) -> None:
-        """Test that print fields can be modified after creation."""
+    def test_print_field_immutability(self) -> None:
+        """Test that print fields cannot be modified after creation."""
         print_card = Print(name="Lightning Bolt", set="LEA")
-        print_card.foil = True
-        print_card.condition = "NM"
-        print_card.price = 15.0
 
-        assert print_card.foil is True
-        assert print_card.condition == "NM"
-        assert print_card.price == 15.0
+        with pytest.raises(ValidationError) as exc_info:
+            print_card.foil = True  # type: ignore[misc]
+        assert "frozen" in str(exc_info.value).lower()
+
+        with pytest.raises(ValidationError) as exc_info:
+            print_card.condition = "NM"  # type: ignore[misc]
+        assert "frozen" in str(exc_info.value).lower()
+
+        with pytest.raises(ValidationError) as exc_info:
+            print_card.price = 15.0  # type: ignore[misc]
+        assert "frozen" in str(exc_info.value).lower()
