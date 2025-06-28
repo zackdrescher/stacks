@@ -86,10 +86,70 @@ class TestCard:
         """Test serializing a card to a dictionary."""
         card = Card(name="Lightning Bolt")
         data = card.model_dump()
-        assert data == {"name": "Lightning Bolt"}
+        assert data == {"name": "Lightning Bolt", "slug": "lightning-bolt"}
 
     def test_card_model_validate(self) -> None:
         """Test creating a card from a dictionary."""
         data = {"name": "Lightning Bolt"}
         card = Card.model_validate(data)
         assert card.name == "Lightning Bolt"
+
+    def test_card_slug_basic(self) -> None:
+        """Test that the slug field is computed correctly for basic names."""
+        card = Card(name="Lightning Bolt")
+        assert card.slug == "lightning-bolt"
+
+    def test_card_slug_with_special_characters(self) -> None:
+        """Test slug computation with special characters and punctuation."""
+        card = Card(name="Sol Ring!")
+        assert card.slug == "sol-ring"
+
+    def test_card_slug_with_numbers(self) -> None:
+        """Test slug computation with numbers in the name."""
+        card = Card(name="Force of Will 5")
+        assert card.slug == "force-of-will-5"
+
+    def test_card_slug_with_apostrophes(self) -> None:
+        """Test slug computation with apostrophes."""
+        card = Card(name="Jace's Ingenuity")
+        assert card.slug == "jace-s-ingenuity"
+
+    def test_card_slug_with_unicode_characters(self) -> None:
+        """Test slug computation with unicode characters."""
+        card = Card(name="Æther Vial")
+        assert card.slug == "aether-vial"
+
+    def test_card_slug_with_multiple_spaces(self) -> None:
+        """Test slug computation with multiple spaces."""
+        card = Card(name="Lightning    Bolt")
+        assert card.slug == "lightning-bolt"
+
+    def test_card_slug_with_mixed_case(self) -> None:
+        """Test slug computation preserves lowercase conversion."""
+        card = Card(name="COUNTERSPELL")
+        assert card.slug == "counterspell"
+
+    def test_card_slug_with_commas_and_periods(self) -> None:
+        """Test slug computation with commas and periods."""
+        card = Card(name="Serra Angel, the Protector")
+        assert card.slug == "serra-angel-the-protector"
+
+    def test_card_slug_with_parentheses(self) -> None:
+        """Test slug computation with parentheses."""
+        card = Card(name="Lightning Bolt (Revised)")
+        assert card.slug == "lightning-bolt-revised"
+
+    def test_card_slug_included_in_model_dump(self) -> None:
+        """Test that slug is included when dumping the model."""
+        card = Card(name="Lightning Bolt")
+        data = card.model_dump()
+        expected = {"name": "Lightning Bolt", "slug": "lightning-bolt"}
+        assert data == expected
+
+    def test_card_slug_updates_when_name_changes(self) -> None:
+        """Test that slug updates when the name is changed."""
+        card = Card(name="Lightning Bolt")
+        assert card.slug == "lightning-bolt"
+
+        card.name = "Counterspell"
+        assert card.slug == "counterspell"
