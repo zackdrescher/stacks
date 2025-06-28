@@ -12,9 +12,6 @@ class Card(BaseModel):
     @classmethod
     def validate_name(cls, value: str) -> str:
         """Validate the card name."""
-        if not value:
-            msg = "Card name cannot be empty."
-            raise ValueError(msg)
         stripped_value = value.strip()
         if not stripped_value:
             msg = "Card name cannot be empty."
