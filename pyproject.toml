@@ -5,6 +5,9 @@ description = ""
 authors = ["Zack Drescher <hello@zackdrescher.com>"]
 readme = "README.md"
 
+[tool.poetry.scripts]
+stacks = "stacks.cli:cli"
+
 [tool.poetry.dependencies]
 python = "^3.12"
 duckdb = "^1.2.1"
@@ -13,6 +16,7 @@ pydantic = "^2.11.7"
 pytest = "^8.4.1"
 pytest-cov = "^6.2.1"
 python-slugify = "^8.0.4"
+click = "^8.1.7"
 
 
 [tool.poetry.group.dev.dependencies]
