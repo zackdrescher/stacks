@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 
 from stacks.card import Card
-from stacks.parser import parse_arena_deck_content, parse_arena_deck_file, parse_csv_collection_content, parse_csv_collection_file
+from stacks.parsing.parser import (
+    parse_arena_deck_content,
+    parse_arena_deck_file,
+    parse_csv_collection_content,
+    parse_csv_collection_file,
+)
 from stacks.print import Print
 
 
@@ -156,7 +161,7 @@ def test_parse_csv_collection_content_with_empty_price() -> None:
 """)
 
     stack = parse_csv_collection_content(csv_content)
-    
+
     # Check that card with empty price has price=None
     for card in stack.unique_cards():
         assert card.price is None
@@ -225,11 +230,11 @@ def test_parse_csv_collection_content_foil_variations() -> None:
 
     stack = parse_csv_collection_content(csv_content)
     cards = stack.unique_cards()
-    
+
     # Check foil values are parsed correctly
     foil_cards = [card for card in cards if card.foil]
     non_foil_cards = [card for card in cards if not card.foil]
-    
+
     assert len(foil_cards) == 3  # true, 1, yes
     assert len(non_foil_cards) == 3  # false, 0, no
 
