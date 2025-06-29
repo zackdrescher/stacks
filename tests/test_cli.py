@@ -91,7 +91,10 @@ def test_cli_with_files() -> None:
 
         # Test union operation
         perform_stack_operation(
-            "union", str(deck1_path), str(deck2_path), str(output_path),
+            "union",
+            str(deck1_path),
+            str(deck2_path),
+            str(output_path),
         )
 
         # Verify output file was created and has expected content

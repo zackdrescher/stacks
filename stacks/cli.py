@@ -19,7 +19,7 @@ def _convert_to_print(card: Card) -> Print:
     """Convert a Card to a Print object for uniform handling."""
     if isinstance(card, Print):
         return card
-    
+
     # Convert basic Card to Print with default values
     return Print(
         name=card.name,
@@ -35,7 +35,7 @@ def _normalize_stack_for_output(stack: Stack, output_format: str) -> Stack:
         # CSV format requires Print objects
         prints = [_convert_to_print(card) for card in stack]
         return Stack(prints)
-    
+
     # Arena format works with any Card objects
     return stack
 
@@ -50,7 +50,7 @@ class StackOperation:
         operation: Callable[[Any, Any], Any],
     ) -> None:
         """Initialize a StackOperation.
-        
+
         Args:
             name: The name of the operation
             description: A description of what the operation does
@@ -87,7 +87,10 @@ OPERATIONS = {
 
 
 def perform_stack_operation(
-    operation_name: str, input1: str, input2: str, output: str,
+    operation_name: str,
+    input1: str,
+    input2: str,
+    output: str,
 ) -> None:
     """Perform a stack operation on two input files and write result to output file.
 
