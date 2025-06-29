@@ -5,7 +5,7 @@ This document shows how to use the CSV collection parser to import card collecti
 ## Basic Usage
 
 ```python
-from stacks.parser import parse_csv_collection_file
+from stacks.parsing.csv_reader import parse_csv_collection_file
 from pathlib import Path
 
 # Parse a CSV collection file
