@@ -51,7 +51,9 @@ class Stack(Generic[T]):
             The number of copies of the card in the stack.
 
         """
-        return len(self._cards[card])
+        if card in self._cards:
+            return len(self._cards[card])
+        return 0
 
     def unique_cards(self) -> list[T]:
         """Get a list of unique cards in the stack.
@@ -81,3 +83,29 @@ class Stack(Generic[T]):
         """
         for card, copies in self._cards.items():
             yield card, len(copies)
+
+    def intersect(self, other: Stack) -> Stack:
+        """Get the intersection of this stack with another stack."""
+        result: Stack = Stack()
+        for card in self.unique_cards():
+            if card in other._cards:
+                min_count = min(self.count(card), other.count(card))
+                if min_count > 0:
+                    result._cards[card] = self._cards[card][:min_count]
+        return result
+
+    def difference(self, other: Stack) -> Stack:
+        """Get the difference of this stack with another stack."""
+        result: Stack = Stack()
+        for card in self.unique_cards():
+            diff_count = self.count(card) - other.count(card)
+            if diff_count > 0:
+                result._cards[card] = self._cards[card][:diff_count]
+        return result
+
+    def union(self, other: Stack) -> Stack:
+        """Get the union of this stack with another stack."""
+        result = Stack(self)  # Copy of self
+        for card in other:
+            result.add(card)
+        return result
