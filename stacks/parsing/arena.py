@@ -1,12 +1,13 @@
-"""Arena deck file reader."""
+"""Arena deck file reader and writer."""
 
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
 
-from stacks.parsing.io_registry import register_reader
+from stacks.parsing.io_registry import register_reader, register_writer
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 from stacks.card import Card
 from stacks.stack import Stack
 
-from .abstractions import StackReader
+from .abstractions import StackReader, StackWriter
 
 
 def parse_arena_deck_file(file_path: str | Path) -> Stack[Card]:
@@ -70,6 +71,39 @@ def parse_arena_deck_content(content: str) -> Stack[Card]:
     reader = ArenaStackReader()
     with StringIO(content) as f:
         return reader.read(f)
+
+
+def write_arena_deck_file(stack: Stack[Card], file_path: str | Path) -> None:
+    """Write a Stack of cards to an Arena deck file.
+
+    Args:
+        stack: The Stack of cards to write.
+        file_path: Path where the Arena deck file will be written.
+
+    """
+    file_path = Path(file_path)
+
+    writer = ArenaStackWriter()
+    with file_path.open("w", encoding="utf-8") as f:
+        writer.write(stack, f)
+
+
+def format_arena_deck_content(stack: Stack[Card]) -> str:
+    """Format a Stack of cards as Arena deck content.
+
+    Args:
+        stack: The Stack of cards to format.
+
+    Returns:
+        The formatted Arena deck content as a string.
+
+    """
+    from io import StringIO
+
+    writer = ArenaStackWriter()
+    with StringIO() as f:
+        writer.write(stack, f)
+        return f.getvalue()
 
 
 @register_reader("arena")
@@ -131,3 +165,50 @@ class ArenaStackReader(StackReader[Card]):
                 raise ValueError(msg)
 
             yield card_name.strip(), count
+
+
+@register_writer("arena")
+class ArenaStackWriter(StackWriter[Card]):
+    """Writer for Arena deck files."""
+
+    def write(self, stack: Stack[Card], file: IO) -> None:
+        """Write a Stack of cards to an Arena deck file format.
+
+        Args:
+            stack: The Stack of cards to write.
+            file: File-like object to write the Arena deck content to.
+
+        """
+        content = self._format_arena_deck_content(stack)
+        file.write(content)
+
+    def _format_arena_deck_content(self, stack: Stack[Card]) -> str:
+        """Format a Stack of cards as Arena deck content.
+
+        Args:
+            stack: The Stack of cards to format.
+
+        Returns:
+            The formatted Arena deck content as a string.
+
+        """
+        # Count occurrences of each card
+        card_counts = Counter(card.name for card in stack)
+
+        # Check if stack is empty
+        if not card_counts:
+            return "Deck\n\nSideboard\n"
+
+        # Sort cards alphabetically by name for consistent output
+        sorted_cards = sorted(card_counts.items())
+
+        lines = ["Deck"]
+        for card_name, count in sorted_cards:
+            lines.append(f"{count} {card_name}")
+
+        # Add empty sideboard section for now
+        # In the future, this could be enhanced to handle actual sideboard cards
+        lines.extend(["", "Sideboard"])
+
+        # Ensure the file ends with a newline
+        return "\n".join(lines) + "\n"

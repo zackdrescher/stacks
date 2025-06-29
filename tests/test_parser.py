@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from stacks.card import Card
-from stacks.parsing.arena_reader import parse_arena_deck_content, parse_arena_deck_file
+from stacks.parsing.arena import parse_arena_deck_content, parse_arena_deck_file
 from stacks.parsing.csv_reader import (
     parse_csv_collection_content,
     parse_csv_collection_file,
