@@ -6,11 +6,11 @@ import csv
 from pathlib import Path
 from typing import IO, TextIO
 
-from stacks.parsing.io_registry import register_reader
+from stacks.parsing.io_registry import register_reader, register_writer
 from stacks.print import Print
 from stacks.stack import Stack
 
-from .abstractions import StackReader
+from .abstractions import StackReader, StackWriter
 
 
 def parse_csv_collection_file(file_path: str | Path) -> Stack[Print]:
@@ -58,6 +58,36 @@ def parse_csv_collection_content(csv_content: TextIO) -> Stack[Print]:
     """
     reader = CsvStackReader()
     return reader.read(csv_content)
+
+
+def write_csv_collection_file(stack: Stack[Print], file_path: str | Path) -> None:
+    """Write a Stack of prints to a CSV collection file.
+
+    Args:
+        stack: Stack of prints to write.
+        file_path: Path where the CSV file will be created.
+
+    Raises:
+        OSError: If the file cannot be written.
+
+    """
+    file_path = Path(file_path)
+
+    writer = CsvStackWriter()
+    with file_path.open("w", encoding="utf-8", newline="") as csvfile:
+        writer.write(stack, csvfile)
+
+
+def write_csv_collection_content(stack: Stack[Print], csv_file: TextIO) -> None:
+    """Write a Stack of prints to a CSV file-like object.
+
+    Args:
+        stack: Stack of prints to write.
+        csv_file: File-like object to write CSV content to.
+
+    """
+    writer = CsvStackWriter()
+    writer.write(stack, csv_file)
 
 
 @register_reader("csv")
@@ -148,3 +178,78 @@ class CsvStackReader(StackReader[Print]):
             )
             for _ in range(count)
         ]
+
+
+@register_writer("csv")
+class CsvStackWriter(StackWriter[Print]):
+    """Writer for CSV collection files."""
+
+    def write(self, stack: Stack[Print], file: IO) -> None:
+        """Write a Stack of prints to a CSV collection file.
+
+        Args:
+            stack: Stack of prints to write.
+            file: File-like object to write CSV content to.
+
+        Raises:
+            ValueError: If the stack is empty.
+
+        """
+        if len(list(stack)) == 0:
+            msg = "Cannot write an empty stack"
+            raise ValueError(msg)
+
+        # Group prints by their properties to calculate counts
+        print_groups = self._group_prints_by_properties(stack)
+
+        # Write CSV header
+        fieldnames = [
+            "Count",
+            "Card Name",
+            "Set Name",
+            "Collector Number",
+            "Foil",
+            "Price",
+        ]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        # Write each group as a row
+        for print_item, count in print_groups.items():
+            row = {
+                "Count": count,
+                "Card Name": print_item.name,
+                "Set Name": print_item.set or "",
+                "Collector Number": "",  # Not available in Print model
+                "Foil": str(print_item.foil).lower(),
+                "Price": print_item.price if print_item.price is not None else "",
+            }
+            writer.writerow(row)
+
+    def _group_prints_by_properties(self, stack: Stack[Print]) -> dict[Print, int]:
+        """Group prints by their properties and count occurrences.
+
+        Args:
+            stack: Stack of prints to group.
+
+        Returns:
+            Dictionary mapping unique prints to their counts.
+
+        """
+        print_counts: dict[tuple, int] = {}
+        print_objects: dict[tuple, Print] = {}
+
+        for print_item in stack:
+            # Create a key based on print properties
+            key = (
+                print_item.name,
+                print_item.set,
+                print_item.foil,
+                print_item.price,
+            )
+
+            print_counts[key] = print_counts.get(key, 0) + 1
+            print_objects[key] = print_item
+
+        # Convert back to Print objects with counts
+        return {print_objects[key]: count for key, count in print_counts.items()}

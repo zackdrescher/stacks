@@ -7,9 +7,12 @@ import pytest
 
 from stacks.card import Card
 from stacks.parsing.arena import parse_arena_deck_content, parse_arena_deck_file
-from stacks.parsing.csv_reader import (
+from stacks.parsing.csv import (
+    CsvStackWriter,
     parse_csv_collection_content,
     parse_csv_collection_file,
+    write_csv_collection_content,
+    write_csv_collection_file,
 )
 from stacks.print import Print
 
@@ -256,3 +259,233 @@ def test_parse_real_csv_collection_file() -> None:
         # Check that we have cards with prices
         priced_cards = [card for card in stack.unique_cards() if card.price is not None]
         assert len(priced_cards) > 0
+
+
+# CSV Writer Tests
+
+
+def test_csv_stack_writer_basic_functionality() -> None:
+    """Test basic CSV writer functionality."""
+    from stacks.stack import Stack
+
+    prints = [
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+        Print(name="Black Lotus", set="LEA", foil=True, price=5000.0),
+    ]
+    stack = Stack(prints)
+
+    writer = CsvStackWriter()
+    output = StringIO()
+    writer.write(stack, output)
+
+    result = output.getvalue()
+    lines = result.strip().split("\n")
+    # Handle Windows line endings
+    lines = [line.rstrip("\r") for line in lines]
+
+    # Check header
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
+
+    # Check data rows
+    assert "1,Lightning Bolt,LEA,,false,10.0" in lines
+    assert "1,Black Lotus,LEA,,true,5000.0" in lines
+    assert len(lines) == 3  # Header + 2 data rows
+
+
+def test_csv_stack_writer_groups_duplicate_prints() -> None:
+    """Test that CSV writer groups duplicate prints and counts them."""
+    from stacks.stack import Stack
+
+    prints = [
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+        Print(name="Black Lotus", set="LEA", foil=True, price=5000.0),
+    ]
+    stack = Stack(prints)
+
+    writer = CsvStackWriter()
+    output = StringIO()
+    writer.write(stack, output)
+
+    result = output.getvalue()
+    lines = result.strip().split("\n")
+    # Handle Windows line endings
+    lines = [line.rstrip("\r") for line in lines]
+
+    # Check that duplicates are grouped with count
+    assert "3,Lightning Bolt,LEA,,false,10.0" in lines
+    assert "1,Black Lotus,LEA,,true,5000.0" in lines
+    assert len(lines) == 3  # Header + 2 data rows (grouped)
+
+
+def test_csv_stack_writer_handles_different_properties() -> None:
+    """Test that prints with different properties are treated as separate."""
+    from stacks.stack import Stack
+
+    prints = [
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+        Print(name="Lightning Bolt", set="LEA", foil=True, price=15.0),  # Diff foil
+        Print(name="Lightning Bolt", set="ICE", foil=False, price=5.0),  # Different set
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=12.0),  # Diff price
+    ]
+    stack = Stack(prints)
+
+    writer = CsvStackWriter()
+    output = StringIO()
+    writer.write(stack, output)
+
+    result = output.getvalue()
+    lines = result.strip().split("\n")
+    # Handle Windows line endings
+    lines = [line.rstrip("\r") for line in lines]
+
+    # Should have 4 separate rows (plus header)
+    assert len(lines) == 5
+
+    # Check all variations are present
+    assert "1,Lightning Bolt,LEA,,false,10.0" in lines
+    assert "1,Lightning Bolt,LEA,,true,15.0" in lines
+    assert "1,Lightning Bolt,ICE,,false,5.0" in lines
+    assert "1,Lightning Bolt,LEA,,false,12.0" in lines
+
+
+def test_csv_stack_writer_handles_none_values() -> None:
+    """Test CSV writer handles None values correctly."""
+    from stacks.stack import Stack
+
+    prints = [
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=None),
+        Print(name="Black Lotus", set="", foil=True, price=5000.0),
+    ]
+    stack = Stack(prints)
+
+    writer = CsvStackWriter()
+    output = StringIO()
+    writer.write(stack, output)
+
+    result = output.getvalue()
+    lines = result.strip().split("\n")
+    # Handle Windows line endings
+    lines = [line.rstrip("\r") for line in lines]
+
+    # Check that None price is handled as empty string
+    assert "1,Lightning Bolt,LEA,,false," in lines
+    # Check that empty set is handled correctly
+    assert "1,Black Lotus,,,true,5000.0" in lines
+
+
+def test_csv_stack_writer_empty_stack_raises_error() -> None:
+    """Test that writing an empty stack raises ValueError."""
+    from stacks.stack import Stack
+
+    empty_stack: Stack[Print] = Stack([])
+    writer = CsvStackWriter()
+    output = StringIO()
+
+    with pytest.raises(ValueError, match="Cannot write an empty stack"):
+        writer.write(empty_stack, output)
+
+
+def test_csv_stack_writer_foil_boolean_formatting() -> None:
+    """Test that foil boolean values are formatted as lowercase strings."""
+    from stacks.stack import Stack
+
+    prints = [
+        Print(name="Card1", set="SET1", foil=True, price=1.0),
+        Print(name="Card2", set="SET1", foil=False, price=1.0),
+    ]
+    stack = Stack(prints)
+
+    writer = CsvStackWriter()
+    output = StringIO()
+    writer.write(stack, output)
+
+    result = output.getvalue()
+
+    # Check that foil values are lowercase
+    assert "true" in result
+    assert "false" in result
+    assert "True" not in result
+    assert "False" not in result
+
+
+def test_write_csv_collection_content() -> None:
+    """Test the write_csv_collection_content utility function."""
+    from stacks.stack import Stack
+
+    prints = [
+        Print(name="Counterspell", set="ICE", foil=False, price=2.5),
+        Print(name="Counterspell", set="ICE", foil=True, price=15.0),
+    ]
+    stack = Stack(prints)
+
+    output = StringIO()
+    write_csv_collection_content(stack, output)
+
+    result = output.getvalue()
+    lines = result.strip().split("\n")
+    # Handle Windows line endings
+    lines = [line.rstrip("\r") for line in lines]
+
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
+    assert "1,Counterspell,ICE,,false,2.5" in lines
+    assert "1,Counterspell,ICE,,true,15.0" in lines
+
+
+def test_write_csv_collection_file(tmp_path: Path) -> None:
+    """Test the write_csv_collection_file utility function."""
+    from stacks.stack import Stack
+
+    prints = [
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+    ]
+    stack = Stack(prints)
+
+    # Write to temporary file
+    csv_file = tmp_path / "test_output.csv"
+    write_csv_collection_file(stack, csv_file)
+
+    # Read back and verify
+    with csv_file.open(encoding="utf-8") as f:
+        content = f.read()
+
+    lines = content.strip().split("\n")
+    # Handle Windows line endings
+    lines = [line.rstrip("\r") for line in lines]
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
+    assert "2,Lightning Bolt,LEA,,false,10.0" in lines
+
+
+def test_csv_round_trip() -> None:
+    """Test that writing and reading a CSV produces the same data."""
+    from stacks.stack import Stack
+
+    original_prints = [
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+        Print(name="Lightning Bolt", set="LEA", foil=False, price=10.0),
+        Print(name="Black Lotus", set="LEA", foil=True, price=5000.0),
+        Print(name="Counterspell", set="ICE", foil=False, price=None),
+    ]
+    original_stack = Stack(original_prints)
+
+    # Write to CSV
+    output = StringIO()
+    writer = CsvStackWriter()
+    writer.write(original_stack, output)
+
+    # Read back from CSV
+    output.seek(0)
+    read_stack = parse_csv_collection_content(output)
+
+    # Compare counts for each unique card
+    original_unique = original_stack.unique_cards()
+    read_unique = read_stack.unique_cards()
+
+    assert len(original_unique) == len(read_unique)
+
+    for original_card in original_unique:
+        original_count = original_stack.count(original_card)
+        read_count = read_stack.count(original_card)
+        assert original_count == read_count, f"Count mismatch for {original_card.name}"
