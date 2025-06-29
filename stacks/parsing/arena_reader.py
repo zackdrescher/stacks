@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
 
+from stacks.parsing.io_registry import register_reader
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -70,6 +72,7 @@ def parse_arena_deck_content(content: str) -> Stack[Card]:
         return reader.read(f)
 
 
+@register_reader("arena")
 class ArenaStackReader(StackReader[Card]):
     """Reader for Arena deck files."""
 

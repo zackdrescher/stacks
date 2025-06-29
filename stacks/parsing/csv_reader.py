@@ -6,6 +6,7 @@ import csv
 from pathlib import Path
 from typing import IO, TextIO
 
+from stacks.parsing.io_registry import register_reader
 from stacks.print import Print
 from stacks.stack import Stack
 
@@ -59,6 +60,7 @@ def parse_csv_collection_content(csv_content: TextIO) -> Stack[Print]:
     return reader.read(csv_content)
 
 
+@register_reader("csv")
 class CsvStackReader(StackReader[Print]):
     """Reader for CSV collection files."""
 
