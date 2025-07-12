@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import IO, TextIO
+from typing import IO, TextIO, Any
 
 from stacks.cards.print import Print
 from stacks.parsing.io_registry import register_reader, register_writer
@@ -253,3 +253,99 @@ class CsvStackWriter(StackWriter[Print]):
 
         # Convert back to Print objects with counts
         return {print_objects[key]: count for key, count in print_counts.items()}
+
+
+@register_writer("scryfall_csv")
+class ScryfallCsvStackWriter(StackWriter):
+    """Writer for CSV collection files with ScryfallCard data."""
+
+    def write(self, stack: Stack, file: IO) -> None:
+        """Write a Stack of ScryfallCards to a CSV collection file.
+
+        Args:
+            stack: Stack of ScryfallCards to write.
+            file: File-like object to write CSV content to.
+
+        Raises:
+            ValueError: If the stack is empty.
+
+        """
+        if len(list(stack)) == 0:
+            msg = "Cannot write an empty stack"
+            raise ValueError(msg)
+
+        # Group cards by their properties to calculate counts
+        card_groups = self._group_cards_by_properties(stack)
+
+        # Write CSV header with ScryfallCard fields
+        fieldnames = [
+            "Count",
+            "Card Name",
+            "Set Code",
+            "Collector Number",
+            "Mana Cost",
+            "Type Line",
+            "Rarity",
+            "Oracle Text",
+            "Price USD",
+            "Colors",
+            "Oracle ID",
+            "Image URL",
+        ]
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        # Write each group as a row
+        for card_item, count in card_groups.items():
+            colors_str = ""
+            if hasattr(card_item, "colors") and card_item.colors:
+                colors_str = ",".join(sorted(color.value for color in card_item.colors))
+
+            row = {
+                "Count": count,
+                "Card Name": card_item.name,
+                "Set Code": getattr(card_item, "set_code", None) or "",
+                "Collector Number": getattr(card_item, "collector_number", None) or "",
+                "Mana Cost": getattr(card_item, "mana_cost", None) or "",
+                "Type Line": getattr(card_item, "type_line", None) or "",
+                "Rarity": getattr(card_item, "rarity", None) or "",
+                "Oracle Text": getattr(card_item, "oracle_text", None) or "",
+                "Price USD": getattr(card_item, "price_usd", None) or "",
+                "Colors": colors_str,
+                "Oracle ID": getattr(card_item, "oracle_id", None) or "",
+                "Image URL": getattr(card_item, "image_url", None) or "",
+            }
+            writer.writerow(row)
+
+    def _group_cards_by_properties(self, stack: Stack) -> dict[Any, int]:
+        """Group cards by their properties and count occurrences.
+
+        Args:
+            stack: Stack of cards to group.
+
+        Returns:
+            Dictionary mapping unique cards to their counts.
+
+        """
+        card_counts: dict[tuple, int] = {}
+        card_objects: dict[tuple, Any] = {}
+
+        for card_item in stack:
+            # Create a key based on card properties
+            colors_key = None
+            if hasattr(card_item, "colors") and card_item.colors:
+                colors_key = tuple(sorted(color.value for color in card_item.colors))
+
+            key = (
+                card_item.name,
+                getattr(card_item, "set_code", None),
+                getattr(card_item, "collector_number", None),
+                getattr(card_item, "price_usd", None),
+                colors_key,
+            )
+
+            card_counts[key] = card_counts.get(key, 0) + 1
+            card_objects[key] = card_item
+
+        # Convert back to card objects with counts
+        return {card_objects[key]: count for key, count in card_counts.items()}

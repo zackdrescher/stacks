@@ -299,16 +299,17 @@ def enrich(input_file: Path, output: Path, set_code: str | None = None) -> None:
 
         enriched_stack = scryer.enrich_stack(stack, set_code)
 
-        # Convert enriched cards to Print objects for CSV output
-        print_cards = [_convert_scryfall_card_to_print(card) for card in enriched_stack]
-        print_stack = Stack(print_cards)
-
         # Ensure output directory exists
         output.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write to CSV file
+        # Write enriched ScryfallCards directly to CSV
         click.echo(f"Writing enriched data to {output}...")
-        write_stack_to_file(print_stack, str(output))
+
+        # Use the ScryfallCard-specific CSV writer
+        from stacks.parsing.csv import ScryfallCsvStackWriter
+        with output.open("w", encoding="utf-8") as f:
+            writer = ScryfallCsvStackWriter()
+            writer.write(enriched_stack, f)
 
         # Print summary
         original_size = len(list(stack))

@@ -214,3 +214,50 @@ class TestScryfallCard:
         assert print_card.set == "lea"
         assert print_card.price == 1.50
         assert print_card.foil is False  # Default value
+
+    def test_scryfall_card_direct_csv_writing(self) -> None:
+        """Test ScryfallCard can be written directly to CSV using the new writer."""
+        import tempfile
+        from pathlib import Path
+
+        from stacks.cards.colors import Color
+        from stacks.parsing.csv import ScryfallCsvStackWriter
+        from stacks.stack import Stack
+
+        # Create a ScryfallCard with full data including colors
+        scryfall_card = ScryfallCard(
+            name="Lightning Bolt",
+            set_code="lea",
+            collector_number="162",
+            mana_cost="{R}",
+            type_line="Instant",
+            rarity="common",
+            oracle_text="Lightning Bolt deals 3 damage to any target.",
+            price_usd=1.50,
+            oracle_id="test-oracle-id",
+            image_url="https://example.com/image.jpg",
+            colors={Color.RED},
+        )
+        stack = Stack([scryfall_card])
+
+        # Write directly to CSV using the ScryfallCard writer
+        with tempfile.NamedTemporaryFile(mode="w+", suffix=".csv", delete=False) as f:
+            writer = ScryfallCsvStackWriter()
+            writer.write(stack, f)
+            f.flush()  # Ensure data is written to disk
+
+        # Read back the content to verify it was written
+        content = Path(f.name).read_text(encoding="utf-8")
+
+        # Verify the content contains all the ScryfallCard data
+        assert "Lightning Bolt" in content
+        assert "lea" in content  # set code
+        assert "162" in content  # collector number
+        assert "{R}" in content  # mana cost
+        assert "Instant" in content  # type line
+        assert "common" in content  # rarity
+        assert "Lightning Bolt deals 3 damage to any target." in content  # oracle text
+        assert "1.5" in content  # price
+        assert "test-oracle-id" in content  # oracle id
+        assert "https://example.com/image.jpg" in content  # image url
+        assert "R" in content  # colors (Color.RED.value)
