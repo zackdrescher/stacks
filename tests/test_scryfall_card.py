@@ -196,7 +196,7 @@ class TestScryfallCard:
     def test_scryfall_card_cli_conversion(self) -> None:
         """Test that ScryfallCard with colors converts properly using CLI function."""
         from stacks.cards.colors import Color
-        from stacks.cli import _convert_scryfall_card_to_print
+        from stacks.cli.converters import convert_scryfall_card_to_print
 
         # Create a ScryfallCard with colors
         scryfall_card = ScryfallCard(
@@ -207,7 +207,7 @@ class TestScryfallCard:
         )
 
         # Convert using the CLI function
-        print_card = _convert_scryfall_card_to_print(scryfall_card)
+        print_card = convert_scryfall_card_to_print(scryfall_card)
 
         # Verify the conversion preserves the important data
         assert print_card.name == "Lightning Bolt"

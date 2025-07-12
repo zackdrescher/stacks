@@ -5,7 +5,7 @@ from pathlib import Path
 
 from stacks.cards.card import Card
 from stacks.cards.print import Print
-from stacks.cli import _convert_to_print, _normalize_stack_for_output
+from stacks.cli.converters import convert_to_print, normalize_stack_for_output
 from stacks.stack import Stack
 
 
@@ -13,12 +13,12 @@ def test_convert_to_print() -> None:
     """Test converting Card to Print."""
     # Test with existing Print object
     print_obj = Print(name="Lightning Bolt", set="LEA", foil=True, price=10.0)
-    result = _convert_to_print(print_obj)
+    result = convert_to_print(print_obj)
     assert result is print_obj  # Should return same object
 
     # Test with basic Card object
     card_obj = Card(name="Counterspell")
-    result = _convert_to_print(card_obj)
+    result = convert_to_print(card_obj)
     assert isinstance(result, Print)
     assert result.name == "Counterspell"
     assert result.set == ""
@@ -36,18 +36,18 @@ def test_normalize_stack_for_output() -> None:
     stack = Stack(cards)
 
     # Test CSV normalization (should convert all to Print)
-    csv_stack = _normalize_stack_for_output(stack, "csv")
+    csv_stack = normalize_stack_for_output(stack, "csv")
     for card in csv_stack:
         assert isinstance(card, Print)
 
     # Test Arena normalization (should leave as-is)
-    arena_stack = _normalize_stack_for_output(stack, "arena")
+    arena_stack = normalize_stack_for_output(stack, "arena")
     assert arena_stack is stack  # Should return same object
 
 
 def test_cli_operations_basic() -> None:
     """Test basic CLI operations work."""
-    from stacks.cli import OPERATIONS
+    from stacks.cli.operations import OPERATIONS
 
     # Test that all expected operations are available
     expected_ops = {"difference", "union", "intersection"}
@@ -75,7 +75,7 @@ def test_cli_operations_basic() -> None:
 
 def test_cli_with_files() -> None:
     """Test CLI with actual files."""
-    from stacks.cli import perform_stack_operation
+    from stacks.cli.operations import perform_stack_operation
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmppath = Path(tmpdir)
