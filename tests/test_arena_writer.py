@@ -3,7 +3,7 @@
 import tempfile
 from pathlib import Path
 
-from stacks.card import Card
+from stacks.cards.card import Card
 from stacks.parsing.arena import (
     ArenaStackWriter,
     format_arena_deck_content,

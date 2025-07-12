@@ -9,7 +9,8 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from stacks.card import Card
+from stacks.cards.card import Card
+from stacks.cards.print import Print
 from stacks.parsing.abstractions import StackReader, StackWriter
 from stacks.parsing.io_registry import (
     load_stack_from_file,
@@ -19,7 +20,6 @@ from stacks.parsing.io_registry import (
     write_stack_to_file,
     writer_registry,
 )
-from stacks.print import Print
 from stacks.stack import Stack
 
 if TYPE_CHECKING:
@@ -62,7 +62,7 @@ class MockPrintWriter(StackWriter[Print]):
         # Simple mock that writes print information
         for print_item in stack:
             file.write(
-                f"{print_item.name},{print_item.set},{print_item.foil},{print_item.price}\n"
+                f"{print_item.name},{print_item.set},{print_item.foil},{print_item.price}\n",
             )
 
 
@@ -74,7 +74,7 @@ def sample_stack_cards() -> Stack[Card]:
             Card(name="Lightning Bolt"),
             Card(name="Counterspell"),
             Card(name="Lightning Bolt"),  # Duplicate to test counting
-        ]
+        ],
     )
 
 
@@ -85,7 +85,7 @@ def sample_stack_prints() -> Stack[Print]:
         [
             Print(name="Lightning Bolt", set="LEA", foil=False, price=15.99),
             Print(name="Counterspell", set="LEA", foil=True, price=25.50),
-        ]
+        ],
     )
 
 
@@ -249,7 +249,10 @@ class TestWriteStackToFile:
 
             # Verify file was opened with correct parameters
             mock_file.assert_called_once_with(
-                "output.txt", "w", encoding="utf-8", newline=""
+                "output.txt",
+                "w",
+                encoding="utf-8",
+                newline="",
             )
 
             # Verify write was called on the mock writer
@@ -292,7 +295,10 @@ class TestWriteStackToFile:
             write_stack_to_file(sample_stack_cards, "output.backup.txt")
 
             mock_file.assert_called_once_with(
-                "output.backup.txt", "w", encoding="utf-8", newline=""
+                "output.backup.txt",
+                "w",
+                encoding="utf-8",
+                newline="",
             )
 
     def test_write_stack_empty_stack(self) -> None:
@@ -303,7 +309,10 @@ class TestWriteStackToFile:
             write_stack_to_file(empty_stack, "empty.txt")
 
             mock_file.assert_called_once_with(
-                "empty.txt", "w", encoding="utf-8", newline=""
+                "empty.txt",
+                "w",
+                encoding="utf-8",
+                newline="",
             )
 
     def test_write_stack_writer_exception_propagation(

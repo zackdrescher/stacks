@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from stacks.card import Card
+    from stacks.cards.card import Card
     from stacks.scryfall.client import ScryfallClient
     from stacks.stack import Stack
 
-from stacks.scryfall.scryfall_card import ScryfallCard
+from stacks.cards.scryfall_card import ScryfallCard
 
 
 class Scryer:

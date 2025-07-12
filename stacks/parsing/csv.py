@@ -6,8 +6,8 @@ import csv
 from pathlib import Path
 from typing import IO, TextIO
 
+from stacks.cards.print import Print
 from stacks.parsing.io_registry import register_reader, register_writer
-from stacks.print import Print
 from stacks.stack import Stack
 
 from .abstractions import StackReader, StackWriter

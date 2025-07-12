@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from stacks.card import Card
+from stacks.cards.card import Card
 
 
 class ScryfallCard(Card):

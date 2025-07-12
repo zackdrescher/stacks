@@ -4,10 +4,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from stacks.card import Card
+from stacks.cards.card import Card
+from stacks.cards.scryfall_card import ScryfallCard
 from stacks.scryfall.client import ScryfallClient
 from stacks.scryfall.scryer import Scryer
-from stacks.scryfall.scryfall_card import ScryfallCard
 
 
 class TestScryer:

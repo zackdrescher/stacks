@@ -3,9 +3,9 @@
 import tempfile
 from pathlib import Path
 
-from stacks.card import Card
+from stacks.cards.card import Card
+from stacks.cards.print import Print
 from stacks.cli import _convert_to_print, _normalize_stack_for_output
-from stacks.print import Print
 from stacks.stack import Stack
 
 

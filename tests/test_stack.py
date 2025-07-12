@@ -1,6 +1,6 @@
 """Tests for the Stack class."""
 
-from stacks.card import Card
+from stacks.cards.card import Card
 from stacks.stack import Stack
 
 
@@ -270,7 +270,7 @@ class TestStack:
 
     def test_stack_with_print_identity_equality(self) -> None:
         """Test that stack treats prints with same identity as equal."""
-        from stacks.print import Print
+        from stacks.cards.print import Print
 
         stack: Stack[Print] = Stack()
 
@@ -295,7 +295,7 @@ class TestStack:
 
     def test_stack_with_different_print_identities(self) -> None:
         """Test that stack treats prints with different identities as distinct."""
-        from stacks.print import Print
+        from stacks.cards.print import Print
 
         stack: Stack[Print] = Stack()
 
@@ -317,7 +317,7 @@ class TestStack:
 
     def test_stack_card_vs_print_distinction(self) -> None:
         """Test that stack distinguishes between Card and Print with same name."""
-        from stacks.print import Print
+        from stacks.cards.print import Print
 
         card = Card(name="Lightning Bolt")
         print_card = Print(name="Lightning Bolt", set="LEA")
@@ -666,7 +666,7 @@ class TestStack:
 
     def test_set_operations_with_print_cards(self) -> None:
         """Test set operations work correctly with Print cards."""
-        from stacks.print import Print
+        from stacks.cards.print import Print
 
         stack1: Stack[Print] = Stack()
         stack2: Stack[Print] = Stack()

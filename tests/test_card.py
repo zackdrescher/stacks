@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from stacks.card import Card
+from stacks.cards.card import Card
 
 
 class TestCard:

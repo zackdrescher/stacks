@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from stacks.card import Card
+from stacks.cards.card import Card
+from stacks.cards.print import Print
 from stacks.parsing.arena import parse_arena_deck_content, parse_arena_deck_file
 from stacks.parsing.csv import (
     CsvStackWriter,
@@ -14,7 +15,6 @@ from stacks.parsing.csv import (
     write_csv_collection_content,
     write_csv_collection_file,
 )
-from stacks.print import Print
 
 
 def test_parse_arena_deck_content() -> None:

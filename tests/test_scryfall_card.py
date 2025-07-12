@@ -2,7 +2,7 @@
 
 import pytest
 
-from stacks.scryfall.scryfall_card import ScryfallCard
+from stacks.cards.scryfall_card import ScryfallCard
 
 
 class TestScryfallCard:

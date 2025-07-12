@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from stacks.print import Print
+from stacks.cards.print import Print
 
 
 class TestPrint:
@@ -227,7 +227,7 @@ class TestPrint:
 
     def test_print_vs_card_inequality(self) -> None:
         """Test that a Print is not equal to a Card with same name."""
-        from stacks.card import Card
+        from stacks.cards.card import Card
 
         card = Card(name="Lightning Bolt")
         print_card = Print(name="Lightning Bolt", set="LEA")

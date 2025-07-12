@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-from stacks.card import Card
+from stacks.cards.card import Card
 
 T = TypeVar("T", bound=Card)
 

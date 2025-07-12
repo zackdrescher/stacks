@@ -2,10 +2,10 @@
 
 import pytest
 
-from stacks.card import Card
+from stacks.cards.card import Card
+from stacks.cards.scryfall_card import ScryfallCard
 from stacks.scryfall.client import ScryfallClient
 from stacks.scryfall.scryer import Scryer
-from stacks.scryfall.scryfall_card import ScryfallCard
 
 
 class TestScryfallIntegration:
@@ -57,9 +57,9 @@ class TestScryfallIntegration:
     def test_module_imports(self) -> None:
         """Test that all scryfall module components can be imported correctly."""
         # These imports should not raise any errors
+        from stacks.cards.scryfall_card import ScryfallCard
         from stacks.scryfall.client import ScryfallClient
         from stacks.scryfall.scryer import Scryer
-        from stacks.scryfall.scryfall_card import ScryfallCard
 
         # Should be able to instantiate classes
         client = ScryfallClient()
@@ -72,14 +72,14 @@ class TestScryfallIntegration:
 
     def test_module_structure(self) -> None:
         """Test that the scryfall module has the expected structure."""
+        import stacks.cards.scryfall_card
         import stacks.scryfall.client
         import stacks.scryfall.scryer
-        import stacks.scryfall.scryfall_card
 
         # Should have the expected classes
         assert hasattr(stacks.scryfall.client, "ScryfallClient")
         assert hasattr(stacks.scryfall.scryer, "Scryer")
-        assert hasattr(stacks.scryfall.scryfall_card, "ScryfallCard")
+        assert hasattr(stacks.cards.scryfall_card, "ScryfallCard")
 
     def test_error_handling_integration(self) -> None:
         """Test error handling in the complete workflow."""

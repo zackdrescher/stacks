@@ -9,9 +9,9 @@ import click
 
 # Import parsing modules to ensure readers/writers are registered
 import stacks.parsing  # noqa: F401
-from stacks.card import Card
+from stacks.cards.card import Card
+from stacks.cards.print import Print
 from stacks.parsing.io_registry import load_stack_from_file, write_stack_to_file
-from stacks.print import Print
 from stacks.scryfall.client import ScryfallClient
 from stacks.scryfall.scryer import Scryer
 from stacks.stack import Stack
@@ -33,7 +33,7 @@ def _convert_to_print(card: Card) -> Print:
 
 def _convert_scryfall_card_to_print(card: Card) -> Print:
     """Convert a ScryfallCard to a Print object with enriched data."""
-    from stacks.scryfall.scryfall_card import ScryfallCard
+    from stacks.cards.scryfall_card import ScryfallCard
 
     if isinstance(card, ScryfallCard):
         return Print(

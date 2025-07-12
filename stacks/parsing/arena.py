@@ -12,7 +12,7 @@ from stacks.parsing.io_registry import register_reader, register_writer
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-from stacks.card import Card
+from stacks.cards.card import Card
 from stacks.stack import Stack
 
 from .abstractions import StackReader, StackWriter

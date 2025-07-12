@@ -2,8 +2,8 @@
 
 import pytest
 
-from stacks.card import Card
-from stacks.print import Print
+from stacks.cards.card import Card
+from stacks.cards.print import Print
 
 
 @pytest.fixture

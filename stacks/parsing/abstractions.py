@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import IO, Generic, TypeVar
 
-from stacks.card import Card
+from stacks.cards.card import Card
 from stacks.stack import Stack
 
 T = TypeVar("T", bound=Card)
