@@ -34,7 +34,7 @@ def _convert_to_print(card: Card) -> Print:
 def _convert_scryfall_card_to_print(card: Card) -> Print:
     """Convert a ScryfallCard to a Print object with enriched data."""
     from stacks.scryfall.scryfall_card import ScryfallCard
-    
+
     if isinstance(card, ScryfallCard):
         return Print(
             name=card.name,
@@ -296,7 +296,7 @@ def enrich(input_file: Path, output: Path, set_code: str | None = None) -> None:
             click.echo(f"Enriching cards with Scryfall data (set: {set_code})...")
         else:
             click.echo("Enriching cards with Scryfall data...")
-            
+
         enriched_stack = scryer.enrich_stack(stack, set_code)
 
         # Convert enriched cards to Print objects for CSV output
@@ -317,7 +317,7 @@ def enrich(input_file: Path, output: Path, set_code: str | None = None) -> None:
         click.echo("\nEnrichment completed successfully!")
         click.echo(f"Original stack: {original_size} cards")
         click.echo(f"Enriched stack: {enriched_size} cards")
-        
+
         if enriched_size < original_size:
             skipped = original_size - enriched_size
             click.echo(f"Skipped: {skipped} cards (not found on Scryfall)")
