@@ -169,14 +169,21 @@ def test_parse_csv_collection_content_with_empty_price() -> None:
         assert card.price is None
 
 
-def test_parse_csv_collection_content_missing_columns() -> None:
-    """Test parsing CSV collection content with missing required columns."""
+def test_parse_csv_collection_content_basic_format() -> None:
+    """Test parsing CSV with just basic columns creates Card objects."""
+    from stacks.cards.card import Card
+
     csv_content = StringIO("""Count,Card Name
 1,Lightning Bolt
 """)
 
-    with pytest.raises(ValueError, match="Missing required columns"):
-        parse_csv_collection_content(csv_content)
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    # Should create basic Card objects
+    assert all(isinstance(card, Card) for card in cards)
+    assert len(cards) == 1
+    assert cards[0].name == "Lightning Bolt"
 
 
 def test_parse_csv_collection_content_invalid_count() -> None:
@@ -489,3 +496,217 @@ def test_csv_round_trip() -> None:
         original_count = original_stack.count(original_card)
         read_count = read_stack.count(original_card)
         assert original_count == read_count, f"Count mismatch for {original_card.name}"
+
+
+# Auto-detection tests for different CSV formats
+
+
+def test_csv_auto_detect_print_format() -> None:
+    """Test that CSV reader auto-detects Print format correctly."""
+    csv_content = StringIO("""Count,Card Name,Set Name,Collector Number,Foil,Price
+1,Lightning Bolt,Beta,1,false,100.00
+2,Counterspell,Alpha,2,true,50.25
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    # Should create Print objects
+    assert all(isinstance(card, Print) for card in cards)
+    assert len(cards) == 3  # 1 + 2 copies
+
+    # Check specific Print properties
+    lightning_bolt = next(card for card in cards if card.name == "Lightning Bolt")
+    assert lightning_bolt.set == "Beta"
+    assert lightning_bolt.foil is False
+    assert lightning_bolt.price == 100.00
+
+
+def test_csv_auto_detect_scryfall_format() -> None:
+    """Test that CSV reader auto-detects ScryfallCard format correctly."""
+    from stacks.cards.scryfall_card import ScryfallCard
+
+    csv_content = StringIO(
+        """Count,Card Name,Set Code,Oracle ID,Mana Cost,Type Line,Rarity,Price USD
+1,Lightning Bolt,lea,oracle123,{R},Instant,common,1.50
+1,Counterspell,lea,oracle456,{U}{U},Instant,common,2.00
+""",
+    )
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    # Should create ScryfallCard objects
+    assert all(isinstance(card, ScryfallCard) for card in cards)
+    assert len(cards) == 2
+
+    # Check specific ScryfallCard properties
+    lightning_bolt = next(card for card in cards if card.name == "Lightning Bolt")
+    assert lightning_bolt.set_code == "lea"
+    assert lightning_bolt.oracle_id == "oracle123"
+    assert lightning_bolt.mana_cost == "{R}"
+    assert lightning_bolt.type_line == "Instant"
+    assert lightning_bolt.rarity == "common"
+    assert lightning_bolt.price_usd == 1.50
+
+
+def test_csv_auto_detect_basic_card_format() -> None:
+    """Test that CSV reader auto-detects basic Card format correctly."""
+    from stacks.cards.card import Card
+
+    csv_content = StringIO("""Count,Card Name
+1,Lightning Bolt
+3,Counterspell
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    # Should create basic Card objects
+    assert all(isinstance(card, Card) for card in cards)
+    assert len(cards) == 4  # 1 + 3 copies
+
+    # Check basic Card properties
+    lightning_bolt = next(card for card in cards if card.name == "Lightning Bolt")
+    assert lightning_bolt.name == "Lightning Bolt"
+    assert hasattr(lightning_bolt, "slug")
+
+
+def test_csv_auto_detect_scryfall_with_colors() -> None:
+    """Test ScryfallCard format with colors parsing."""
+    from stacks.cards.colors import Color
+    from stacks.cards.scryfall_card import ScryfallCard
+
+    csv_content = StringIO("""Count,Card Name,Set Code,Colors,Mana Cost,Type Line
+1,Lightning Bolt,lea,R,{R},Instant
+1,Izzet Charm,rtr,"R,U",{U}{R},Instant
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    assert all(isinstance(card, ScryfallCard) for card in cards)
+
+    lightning_bolt = next(card for card in cards if card.name == "Lightning Bolt")
+    assert lightning_bolt.colors == {Color.RED}
+
+    izzet_charm = next(card for card in cards if card.name == "Izzet Charm")
+    assert izzet_charm.colors == {Color.RED, Color.BLUE}
+
+
+def test_csv_auto_detect_minimal_print_format() -> None:
+    """Test detection with minimal Print columns."""
+    csv_content = StringIO("""Count,Card Name,Set Name
+1,Lightning Bolt,Beta
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    # Should detect as Print format even with minimal columns
+    assert all(isinstance(card, Print) for card in cards)
+    assert len(cards) == 1
+
+    card = cards[0]
+    assert card.set == "Beta"
+    assert card.foil is False  # Default value
+    assert card.price is None  # Default value
+
+
+def test_csv_auto_detect_scryfall_priority_over_print() -> None:
+    """Test that Scryfall format takes priority when both indicators are present."""
+    from stacks.cards.scryfall_card import ScryfallCard
+
+    # CSV with both Print and Scryfall columns - should choose Scryfall
+    csv_content = StringIO(
+        """Count,Card Name,Set Name,Set Code,Oracle ID,Mana Cost,Type Line,Foil,Price
+1,Lightning Bolt,Beta,lea,oracle123,{R},Instant,false,100.00
+""",
+    )
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    # Should create ScryfallCard objects, not Print
+    assert all(isinstance(card, ScryfallCard) for card in cards)
+
+    card = cards[0]
+    assert card.set_code == "lea"
+    assert card.oracle_id == "oracle123"
+
+
+def test_csv_validation_scryfall_format_missing_scryfall_columns() -> None:
+    """Test validation fails when CSV appears to be Scryfall but missing key columns."""
+    # Has many Scryfall indicators but missing actual Scryfall data
+    csv_content = StringIO(
+        """Count,Card Name,Random Column1,Random Column2,Random Column3
+1,Lightning Bolt,value1,value2,value3
+""",
+    )
+
+    # This should be detected as basic Card format, not Scryfall
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    from stacks.cards.card import Card
+
+    assert all(isinstance(card, Card) for card in cards)
+
+
+def test_csv_validation_print_format_missing_required_columns() -> None:
+    """Test validation for Print format with missing required columns."""
+    csv_content = StringIO("""Count,Card Name,Set Name
+1,Lightning Bolt,Beta
+""")
+
+    # This should work - Set Name is sufficient for Print detection
+    # and Foil/Price are optional (have defaults)
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    assert all(isinstance(card, Print) for card in cards)
+
+
+def test_csv_scryfall_format_with_empty_values() -> None:
+    """Test ScryfallCard format handles empty/missing values gracefully."""
+    from stacks.cards.scryfall_card import ScryfallCard
+
+    csv_content = StringIO(
+        """Count,Card Name,Set Code,Oracle ID,Mana Cost,Price USD,Colors
+1,Lightning Bolt,lea,,{R},,
+1,Unknown Card,,,,,
+""",
+    )
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    assert all(isinstance(card, ScryfallCard) for card in cards)
+
+    lightning_bolt = next(card for card in cards if card.name == "Lightning Bolt")
+    assert lightning_bolt.set_code == "lea"
+    assert lightning_bolt.oracle_id is None  # Empty string becomes None
+    assert lightning_bolt.price_usd is None
+    assert lightning_bolt.colors is None
+
+    unknown_card = next(card for card in cards if card.name == "Unknown Card")
+    assert unknown_card.set_code is None
+    assert unknown_card.oracle_id is None
+
+
+def test_csv_print_format_with_missing_optional_columns() -> None:
+    """Test Print format with missing optional columns uses defaults."""
+    csv_content = StringIO("""Count,Card Name,Set Name
+2,Lightning Bolt,Beta
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    assert all(isinstance(card, Print) for card in cards)
+    assert len(cards) == 2
+
+    card = cards[0]
+    assert card.set == "Beta"
+    assert card.foil is False  # Default
+    assert card.price is None  # Default

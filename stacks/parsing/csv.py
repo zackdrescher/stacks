@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import IO, TextIO, Any
+from typing import IO, Any, TextIO
 
 from stacks.cards.print import Print
 from stacks.parsing.io_registry import register_reader, register_writer
@@ -13,19 +13,19 @@ from stacks.stack import Stack
 from .abstractions import StackReader, StackWriter
 
 
-def parse_csv_collection_file(file_path: str | Path) -> Stack[Print]:
-    """Parse a CSV collection export file into a Stack of prints.
+def parse_csv_collection_file(file_path: str | Path) -> Stack:
+    """Parse a CSV collection export file into a Stack of cards.
 
-    CSV files should have the format:
-    Count,Card Name,Set Name,Collector Number,Foil,Price
-    1,Card Name,Set Name,123,false,0.50
-    2,Another Card,Another Set,456,true,1.00
+    The parser auto-detects the card type based on available columns:
+    - Scryfall format: Creates ScryfallCard objects
+    - Print format: Creates Print objects
+    - Basic format: Creates basic Card objects
 
     Args:
         file_path: Path to the CSV collection file.
 
     Returns:
-        A Stack containing all the prints from the collection.
+        A Stack containing cards of the appropriate type based on CSV columns.
 
     Raises:
         FileNotFoundError: If the file doesn't exist.
@@ -43,14 +43,19 @@ def parse_csv_collection_file(file_path: str | Path) -> Stack[Print]:
         return reader.read(csvfile)
 
 
-def parse_csv_collection_content(csv_content: TextIO) -> Stack[Print]:
-    """Parse CSV collection content into a Stack of prints.
+def parse_csv_collection_content(csv_content: TextIO) -> Stack:
+    """Parse CSV collection content into a Stack of cards.
+
+    The parser auto-detects the card type based on available columns:
+    - Scryfall format: Creates ScryfallCard objects
+    - Print format: Creates Print objects
+    - Basic format: Creates basic Card objects
 
     Args:
         csv_content: File-like object or content of a CSV collection file.
 
     Returns:
-        A Stack containing all the prints from the collection.
+        A Stack containing cards of the appropriate type based on CSV columns.
 
     Raises:
         ValueError: If the content format is invalid.
@@ -91,40 +96,122 @@ def write_csv_collection_content(stack: Stack[Print], csv_file: TextIO) -> None:
 
 
 @register_reader("csv")
-class CsvStackReader(StackReader[Print]):
-    """Reader for CSV collection files."""
+class CsvStackReader(StackReader):
+    """Reader for CSV collection files that auto-detects card type."""
 
-    def read(self, file: IO) -> Stack[Print]:
-        """Read a CSV collection file into a Stack of prints.
+    def read(self, file: IO) -> Stack:
+        """Read a CSV collection file into a Stack of cards.
+
+        The card type is determined by the available columns:
+        - If Scryfall columns (Set Code, Oracle ID, etc.) are present:
+          creates ScryfallCard
+        - If Print columns (Set Name, Foil, Price) are present: creates Print
+        - Otherwise: creates basic Card objects
 
         Args:
             file: File-like object containing CSV collection content.
 
         Returns:
-            A Stack containing all the prints from the collection.
+            A Stack containing cards of the appropriate type.
 
         Raises:
             ValueError: If the file format is invalid.
 
         """
-        prints: list[Print] = []
+        cards: list[Any] = []
         reader = csv.DictReader(file)
 
-        self._validate_csv_headers(reader)
+        # Determine card type based on available columns
+        card_type = self._detect_card_type(reader)
+        self._validate_csv_headers(reader, card_type)
 
         # Start at 2 since header is row 1
         for row_num, row in enumerate(reader, start=2):
-            row_prints = self._parse_csv_row(row, row_num)
-            prints.extend(row_prints)
+            row_cards = self._parse_csv_row(row, row_num, card_type)
+            cards.extend(row_cards)
 
-        return Stack(prints)
+        return Stack(cards)
 
-    def _validate_csv_headers(self, reader: csv.DictReader) -> None:
-        """Validate that required CSV columns exist."""
-        required_columns = {"Count", "Card Name", "Set Name", "Foil", "Price"}
-        if not required_columns.issubset(set(reader.fieldnames or [])):
-            missing = required_columns - set(reader.fieldnames or [])
-            msg = f"Missing required columns: {missing}"
+    def _detect_card_type(self, reader: csv.DictReader) -> str:
+        """Detect the card type based on available CSV columns.
+
+        Returns:
+            "scryfall" if Scryfall-specific columns are present
+            "print" if Print-specific columns are present
+            "card" for basic card columns only
+
+        """
+        if not reader.fieldnames:
+            return "card"
+
+        columns = set(reader.fieldnames)
+
+        # Scryfall-specific columns that indicate ScryfallCard format
+        scryfall_columns = {
+            "Set Code",
+            "Oracle ID",
+            "Mana Cost",
+            "Type Line",
+            "Rarity",
+            "Oracle Text",
+            "Colors",
+            "Image URL",
+        }
+
+        # Print-specific columns (excluding basic ones like Card Name)
+        print_columns = {"Set Name", "Foil", "Price"}
+
+        # Check for Scryfall format (requires multiple specific columns)
+        min_scryfall_columns = 3
+        if len(scryfall_columns.intersection(columns)) >= min_scryfall_columns:
+            return "scryfall"
+
+        # Check for Print format (requires at least Set Name or Foil)
+        if len(print_columns.intersection(columns)) >= 1:
+            return "print"
+
+        # Default to basic Card if only name is available
+        return "card"
+
+    def _validate_csv_headers(self, reader: csv.DictReader, card_type: str) -> None:
+        """Validate that required CSV columns exist for the detected card type."""
+        if not reader.fieldnames:
+            msg = "CSV file has no headers"
+            raise ValueError(msg)
+
+        columns = set(reader.fieldnames)
+
+        # All formats require these basic columns
+        basic_required = {"Count", "Card Name"}
+
+        if card_type == "scryfall":
+            # For ScryfallCard, we need Count, Card Name, and at least one field
+            required_columns = basic_required
+            scryfall_columns = {
+                "Set Code",
+                "Oracle ID",
+                "Mana Cost",
+                "Type Line",
+                "Rarity",
+                "Oracle Text",
+                "Colors",
+                "Image URL",
+                "Price USD",
+            }
+            if not scryfall_columns.intersection(columns):
+                msg = "CSV appears to be Scryfall format but missing Scryfall columns"
+                raise ValueError(msg)
+        elif card_type == "print":
+            # For Print, we only need the basic columns + Set Name
+            # Foil and Price are optional (have defaults)
+            required_columns = basic_required | {"Set Name"}
+        else:  # card_type == "card"
+            # For basic Card, we only need name and count
+            required_columns = basic_required
+
+        missing = required_columns - columns
+        if missing:
+            msg = f"Missing required columns for {card_type} format: {missing}"
             raise ValueError(msg)
 
     def _validate_count(self, count: int, row_num: int) -> None:
@@ -157,16 +244,84 @@ class CsvStackReader(StackReader[Print]):
             msg = f"Invalid {field_name} '{value}' at row {row_num}"
             raise ValueError(msg) from exc
 
-    def _parse_csv_row(self, row: dict[str, str], row_num: int) -> list[Print]:
-        """Parse a single CSV row into a list of Print objects."""
+    def _parse_csv_row(
+        self,
+        row: dict[str, str],
+        row_num: int,
+        card_type: str,
+    ) -> list[Any]:
+        """Parse a single CSV row into a list of card objects."""
         count = self._safe_int(row["Count"], "count", row_num)
         card_name = row["Card Name"].strip()
-        set_name = row["Set Name"].strip()
-        foil = row["Foil"].lower() in ("true", "1", "yes")
-        price = self._safe_float(row["Price"], "price", row_num)
 
         self._validate_count(count, row_num)
         self._validate_card_name(card_name, row_num)
+
+        if card_type == "scryfall":
+            return self._create_scryfall_cards(row, card_name, count, row_num)
+        if card_type == "print":
+            return self._create_print_cards(row, card_name, count, row_num)
+        return self._create_basic_cards(card_name, count)
+
+    def _create_scryfall_cards(
+        self,
+        row: dict[str, str],
+        card_name: str,
+        count: int,
+        row_num: int,
+    ) -> list[Any]:
+        """Create ScryfallCard objects from CSV row data."""
+        from stacks.cards.colors import Color
+        from stacks.cards.scryfall_card import ScryfallCard
+
+        # Parse colors if present
+        colors = None
+        if "Colors" in row and row["Colors"].strip():
+            color_strings = [c.strip() for c in row["Colors"].split(",")]
+            try:
+                colors = {Color(color) for color in color_strings if color}
+            except ValueError:
+                # If colors can't be parsed, leave as None
+                colors = None
+
+        # Parse price using _safe_float for proper validation
+        price_usd = None
+        if "Price USD" in row and row["Price USD"].strip():
+            price_usd = self._safe_float(row["Price USD"], "price", row_num)
+
+        # Create the specified number of card copies
+        return [
+            ScryfallCard(
+                name=card_name,
+                oracle_id=row.get("Oracle ID") or None,
+                set_code=row.get("Set Code") or None,
+                collector_number=row.get("Collector Number") or None,
+                mana_cost=row.get("Mana Cost") or None,
+                type_line=row.get("Type Line") or None,
+                rarity=row.get("Rarity") or None,
+                oracle_text=row.get("Oracle Text") or None,
+                price_usd=price_usd,
+                image_url=row.get("Image URL") or None,
+                colors=colors,
+            )
+            for _ in range(count)
+        ]
+
+    def _create_print_cards(
+        self,
+        row: dict[str, str],
+        card_name: str,
+        count: int,
+        row_num: int,
+    ) -> list[Print]:
+        """Create Print objects from CSV row data."""
+        set_name = row.get("Set Name", "").strip()
+        foil = row.get("Foil", "false").lower() in ("true", "1", "yes")
+
+        # Use _safe_float for price validation
+        price = None
+        if "Price" in row and row["Price"].strip():
+            price = self._safe_float(row["Price"], "price", row_num)
 
         # Create the specified number of print copies
         return [
@@ -178,6 +333,12 @@ class CsvStackReader(StackReader[Print]):
             )
             for _ in range(count)
         ]
+
+    def _create_basic_cards(self, card_name: str, count: int) -> list[Any]:
+        """Create basic Card objects."""
+        from stacks.cards.card import Card
+
+        return [Card(name=card_name) for _ in range(count)]
 
 
 @register_writer("csv")
