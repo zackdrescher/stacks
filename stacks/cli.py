@@ -12,6 +12,8 @@ import stacks.parsing  # noqa: F401
 from stacks.card import Card
 from stacks.parsing.io_registry import load_stack_from_file, write_stack_to_file
 from stacks.print import Print
+from stacks.scryfall.client import ScryfallClient
+from stacks.scryfall.scryer import Scryer
 from stacks.stack import Stack
 
 
@@ -27,6 +29,23 @@ def _convert_to_print(card: Card) -> Print:
         foil=False,  # Default non-foil
         price=None,  # Default no price
     )
+
+
+def _convert_scryfall_card_to_print(card: Card) -> Print:
+    """Convert a ScryfallCard to a Print object with enriched data."""
+    from stacks.scryfall.scryfall_card import ScryfallCard
+    
+    if isinstance(card, ScryfallCard):
+        return Print(
+            name=card.name,
+            set=card.set_code or "",
+            foil=False,  # Default non-foil since Scryfall doesn't specify
+            price=card.price_usd,
+        )
+    if isinstance(card, Print):
+        return card
+    # Fallback to regular card conversion
+    return _convert_to_print(card)
 
 
 def _normalize_stack_for_output(stack: Stack, output_format: str) -> Stack:
@@ -231,6 +250,87 @@ def list_operations() -> None:
     click.echo("Available stack operations:\n")
     for name, operation in OPERATIONS.items():
         click.echo(f"  {name:<12} - {operation.description}")
+
+
+@cli.command()
+@click.argument("input_file", type=click.Path(exists=True, path_type=Path))
+@click.argument("output", type=click.Path(path_type=Path))
+@click.option(
+    "--set",
+    "set_code",
+    help="Optional set code to narrow the search for all cards",
+)
+def enrich(input_file: Path, output: Path, set_code: str | None = None) -> None:
+    r"""Enrich cards from INPUT_FILE with Scryfall data and write to CSV.
+
+    This command loads a stack from the input file, enriches each card with
+    additional data from the Scryfall API (including prices, set codes, mana costs,
+    and other metadata), and writes the enriched results to a CSV file.
+
+    Cards that cannot be found on Scryfall will be skipped and not included
+    in the output file.
+
+    Examples:
+    \b
+        stacks enrich deck.arena enriched_deck.csv
+        stacks enrich collection.csv updated_collection.csv --set m21
+
+    """
+    # Validate input file exists
+    if not input_file.exists():
+        error_msg = f"Input file does not exist: {input_file}"
+        raise click.ClickException(error_msg)
+
+    try:
+        # Load stack from input file
+        click.echo(f"Loading stack from {input_file}...")
+        stack = load_stack_from_file(str(input_file))
+
+        # Initialize Scryfall client and scryer
+        click.echo("Initializing Scryfall API client...")
+        client = ScryfallClient()
+        scryer = Scryer(client)
+
+        # Enrich the stack
+        if set_code:
+            click.echo(f"Enriching cards with Scryfall data (set: {set_code})...")
+        else:
+            click.echo("Enriching cards with Scryfall data...")
+            
+        enriched_stack = scryer.enrich_stack(stack, set_code)
+
+        # Convert enriched cards to Print objects for CSV output
+        print_cards = [_convert_scryfall_card_to_print(card) for card in enriched_stack]
+        print_stack = Stack(print_cards)
+
+        # Ensure output directory exists
+        output.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write to CSV file
+        click.echo(f"Writing enriched data to {output}...")
+        write_stack_to_file(print_stack, str(output))
+
+        # Print summary
+        original_size = len(list(stack))
+        enriched_size = len(list(enriched_stack))
+
+        click.echo("\nEnrichment completed successfully!")
+        click.echo(f"Original stack: {original_size} cards")
+        click.echo(f"Enriched stack: {enriched_size} cards")
+        
+        if enriched_size < original_size:
+            skipped = original_size - enriched_size
+            click.echo(f"Skipped: {skipped} cards (not found on Scryfall)")
+
+    except ValueError as e:
+        error_msg = f"Error processing files: {e}"
+        raise click.ClickException(error_msg) from e
+    except OSError as e:
+        error_msg = f"File I/O error: {e}"
+        raise click.ClickException(error_msg) from e
+    except Exception as e:
+        error_msg = f"Scryfall API error: {e}"
+        raise click.ClickException(error_msg) from e
 
 
 if __name__ == "__main__":
