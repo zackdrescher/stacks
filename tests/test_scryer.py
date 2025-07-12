@@ -208,3 +208,96 @@ class TestScryer:
         assert result is not None
         assert result.slug == "lightning-bolt"  # Should have Card methods
         assert isinstance(result, Card)  # Should be instance of Card
+
+    def test_enrich_stack_success(self) -> None:
+        """Test enriching a stack of cards with Scryfall data."""
+        # Arrange
+        from stacks.stack import Stack
+
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        card3 = Card(name="Unknown Card")  # This won't be found
+
+        original_stack = Stack([card1, card2, card3])
+
+        # Mock responses for first two cards, None for the third
+        def mock_get_card_side_effect(name, set_code=None):
+            if name == "Lightning Bolt":
+                return {
+                    "name": "Lightning Bolt",
+                    "set": "lea",
+                    "prices": {"usd": "1.50"},
+                    "image_uris": {"normal": "https://example.com/bolt.jpg"},
+                }
+            if name == "Counterspell":
+                return {
+                    "name": "Counterspell",
+                    "set": "lea",
+                    "prices": {"usd": "2.00"},
+                    "image_uris": {"normal": "https://example.com/counter.jpg"},
+                }
+            return None
+
+        self.mock_client.get_card_by_name.side_effect = mock_get_card_side_effect
+
+        # Act
+        result_stack = self.scryer.enrich_stack(original_stack)
+
+        # Assert
+        assert isinstance(result_stack, Stack)
+        enriched_cards = list(result_stack)
+        assert len(enriched_cards) == 2  # Only 2 cards found, 1 skipped
+
+        # Check that we got ScryfallCard objects
+        for card in enriched_cards:
+            assert isinstance(card, ScryfallCard)
+
+        # Check specific cards
+        card_names = {card.name for card in enriched_cards}
+        assert "Lightning Bolt" in card_names
+        assert "Counterspell" in card_names
+        assert "Unknown Card" not in card_names  # Should be skipped
+
+        # Verify the mock was called for all cards
+        assert self.mock_client.get_card_by_name.call_count == 3
+
+    def test_enrich_stack_with_set_code(self) -> None:
+        """Test enriching a stack with a specific set code."""
+        # Arrange
+        from stacks.stack import Stack
+
+        card = Card(name="Lightning Bolt")
+        original_stack = Stack([card])
+
+        scryfall_data = {
+            "name": "Lightning Bolt",
+            "set": "m10",
+            "prices": {"usd": "1.00"},
+        }
+        self.mock_client.get_card_by_name.return_value = scryfall_data
+
+        # Act
+        result_stack = self.scryer.enrich_stack(original_stack, set_code="m10")
+
+        # Assert
+        enriched_cards = list(result_stack)
+        assert len(enriched_cards) == 1
+        assert enriched_cards[0].set_code == "m10"
+
+        # Verify set code was passed to the client
+        self.mock_client.get_card_by_name.assert_called_with("Lightning Bolt", "m10")
+
+    def test_enrich_stack_empty_stack(self) -> None:
+        """Test enriching an empty stack."""
+        # Arrange
+        from stacks.stack import Stack
+
+        empty_stack: Stack = Stack()
+
+        # Act
+        result_stack = self.scryer.enrich_stack(empty_stack)
+
+        # Assert
+        assert isinstance(result_stack, Stack)
+        assert len(list(result_stack)) == 0
+        assert self.mock_client.get_card_by_name.call_count == 0
