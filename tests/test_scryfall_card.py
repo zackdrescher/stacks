@@ -21,9 +21,12 @@ class TestScryfallCard:
         assert card.oracle_text is None
         assert card.price_usd is None
         assert card.image_url is None
+        assert card.colors is None
 
     def test_scryfall_card_creation_full(self) -> None:
         """Test creating a ScryfallCard with all data."""
+        from stacks.cards.colors import Color
+
         card = ScryfallCard(
             name="Lightning Bolt",
             set_code="lea",
@@ -34,6 +37,7 @@ class TestScryfallCard:
             oracle_text="Lightning Bolt deals 3 damage to any target.",
             price_usd=1.50,
             image_url="https://example.com/image.jpg",
+            colors={Color.RED},
         )
 
         assert card.name == "Lightning Bolt"
@@ -45,6 +49,7 @@ class TestScryfallCard:
         assert card.oracle_text == "Lightning Bolt deals 3 damage to any target."
         assert card.price_usd == 1.50
         assert card.image_url == "https://example.com/image.jpg"
+        assert card.colors == {Color.RED}
 
     def test_scryfall_card_inherits_from_card(self) -> None:
         """Test that ScryfallCard inherits from Card properly."""
@@ -99,6 +104,7 @@ class TestScryfallCard:
             oracle_text=None,
             price_usd=None,
             image_url=None,
+            colors=None,
         )
 
         assert card.name == "Lightning Bolt"
@@ -110,6 +116,7 @@ class TestScryfallCard:
         assert card.oracle_text is None
         assert card.price_usd is None
         assert card.image_url is None
+        assert card.colors is None
 
     def test_scryfall_card_price_as_float(self) -> None:
         """Test that price_usd accepts float values."""
@@ -120,3 +127,90 @@ class TestScryfallCard:
         """Test that price_usd can be zero."""
         card = ScryfallCard(name="Lightning Bolt", price_usd=0.0)
         assert card.price_usd == 0.0
+
+    def test_scryfall_card_colors_conversion(self) -> None:
+        """Test the conversion of colors to a set of Color enum values."""
+        from stacks.cards.colors import Color
+
+        card = ScryfallCard(name="Lightning Bolt", colors={Color.RED, Color.BLUE})
+
+        assert card.colors == {Color.RED, Color.BLUE}
+
+        card_empty = ScryfallCard(name="Lightning Bolt", colors=set())
+        assert card_empty.colors == set()
+
+        card_none = ScryfallCard(name="Lightning Bolt", colors=None)
+        assert card_none.colors is None
+
+    def test_scryfall_card_colors_list_conversion(self) -> None:
+        """Test conversion of a list of color strings to a set of Color enum values."""
+        from stacks.cards.colors import Color
+
+        # Test conversion from list of color strings
+        card = ScryfallCard(name="Lightning Bolt", colors=["R", "U"])
+        assert card.colors == {Color.RED, Color.BLUE}
+
+        # Test empty list conversion
+        card_empty = ScryfallCard(name="Lightning Bolt", colors=[])
+        assert card_empty.colors == set()
+
+    def test_scryfall_card_csv_writing(self) -> None:
+        """Test that ScryfallCard with colors can be written to CSV format."""
+        import tempfile
+        from pathlib import Path
+
+        from stacks.cards.colors import Color
+        from stacks.cards.print import Print
+        from stacks.parsing.io_registry import write_stack_to_file
+        from stacks.stack import Stack
+
+        # Create a ScryfallCard with colors
+        scryfall_card = ScryfallCard(
+            name="Lightning Bolt",
+            set_code="lea",
+            colors={Color.RED},
+            price_usd=1.50,
+        )
+
+        # Convert to Print object for CSV compatibility
+        print_card = Print(
+            name=scryfall_card.name,
+            set=scryfall_card.set_code or "",
+            foil=False,
+            price=scryfall_card.price_usd,
+        )
+        stack = Stack([print_card])
+
+        # Write to CSV and verify it doesn't fail
+        with tempfile.NamedTemporaryFile(mode="w+", suffix=".csv", delete=False) as f:
+            write_stack_to_file(stack, f.name)
+
+            # Read back the content to verify it was written
+            content = Path(f.name).read_text(encoding="utf-8")
+
+        # Verify the content contains the card data
+        assert "Lightning Bolt" in content
+        assert "lea" in content  # set code
+        assert "1.5" in content  # price
+
+    def test_scryfall_card_cli_conversion(self) -> None:
+        """Test that ScryfallCard with colors converts properly using CLI function."""
+        from stacks.cards.colors import Color
+        from stacks.cli import _convert_scryfall_card_to_print
+
+        # Create a ScryfallCard with colors
+        scryfall_card = ScryfallCard(
+            name="Lightning Bolt",
+            set_code="lea",
+            colors={Color.RED, Color.BLUE},
+            price_usd=1.50,
+        )
+
+        # Convert using the CLI function
+        print_card = _convert_scryfall_card_to_print(scryfall_card)
+
+        # Verify the conversion preserves the important data
+        assert print_card.name == "Lightning Bolt"
+        assert print_card.set == "lea"
+        assert print_card.price == 1.50
+        assert print_card.foil is False  # Default value
