@@ -109,3 +109,23 @@ class Stack(Generic[T]):
         for card in other:
             result.add(card)
         return result
+
+    def __str__(self) -> str:
+        """Return a string representation of the stack.
+
+        Returns:
+            A string showing each unique card and its count.
+
+        """
+        if not self._cards:
+            return "Stack(empty)"
+
+        lines = []
+        for card, count in self.items():
+            lines.append(f"{count}x {card.name}")
+
+        return "Stack(\n  " + "\n  ".join(lines) + "\n)"
+
+    def __repr__(self) -> str:
+        """Return a detailed string representation of the stack."""
+        return f"Stack({list(self)})"
