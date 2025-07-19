@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
 
@@ -11,6 +12,9 @@ from stacks.scryfall.client import ScryfallClient
 from stacks.scryfall.scryer import Scryer
 
 from .operations import OPERATIONS, perform_stack_operation
+
+if TYPE_CHECKING:
+    from stacks.stack import Stack
 
 
 @click.command()
@@ -163,3 +167,147 @@ def enrich(input_file: Path, output: Path, set_code: str | None = None) -> None:
     except Exception as e:
         error_msg = f"Scryfall API error: {e}"
         raise click.ClickException(error_msg) from e
+
+
+@click.command()
+@click.argument("input_file", type=click.Path(exists=True, path_type=Path))
+@click.argument("output", type=click.Path(path_type=Path))
+@click.option(
+    "--filter",
+    "filters",
+    multiple=True,
+    help=(
+        "Filter in format 'property:operator:value' "
+        "(e.g., 'rarity:eq:mythic', 'price_usd:gte:10')"
+    ),
+)
+@click.option("--colors", help="Filter by colors (comma-separated: R,G,B,U,W)")
+@click.option("--type-line", help="Filter by type line (contains)")
+@click.option("--mana-cost", help="Filter by mana cost")
+@click.option("--rarity", help="Filter by rarity")
+@click.option("--set-code", help="Filter by set code")
+@click.option("--price-min", type=float, help="Minimum price filter")
+@click.option("--price-max", type=float, help="Maximum price filter")
+def filter_stack(
+    input_file: Path,
+    output: Path,
+    filters: tuple,
+    **kwargs: str | float,
+) -> None:
+    """Filter cards in a stack by various properties."""
+    from stacks.filtering import FilterableStack
+
+    stack = load_stack_from_file(str(input_file))
+    filterable = FilterableStack(stack)
+
+    # Parse and validate all filters first
+    filter_objects = _parse_generic_filters(filters)
+    filter_objects.extend(_parse_convenience_filters(kwargs))
+
+    # Apply filters
+    filtered_stack = filterable.filter(*filter_objects)
+
+    # Write result
+    _write_filtered_result(filtered_stack, output)
+
+    # Report summary
+    original_count = len(list(stack))
+    filtered_count = len(list(filtered_stack))
+    click.echo(f"Filtered {original_count} cards down to {filtered_count} cards")
+
+
+def _parse_generic_filters(filters: tuple) -> list:
+    """Parse generic filter strings into filter objects."""
+    from stacks.filtering import CardPropertyFilter, FilterOperator
+
+    expected_parts = 3
+    filter_objects = []
+    invalid_filters = []
+
+    for filter_str in filters:
+        parts = filter_str.split(":", expected_parts - 1)
+        if len(parts) != expected_parts:
+            invalid_filters.append(filter_str)
+            continue
+
+        prop, op, value = parts
+        try:
+            operator = FilterOperator(op)
+        except ValueError:
+            invalid_filters.append(filter_str)
+            continue
+
+        # Type conversion based on property
+        converted_value = _convert_filter_value(
+            prop,
+            value,
+            filter_str,
+            invalid_filters,
+        )
+        if filter_str not in invalid_filters:
+            filter_objects.append(CardPropertyFilter(prop, operator, converted_value))
+
+    # Report all invalid filters at once
+    if invalid_filters:
+        for invalid_filter in invalid_filters:
+            click.echo(
+                f"Invalid filter format: {invalid_filter}. "
+                "Use 'property:operator:value'",
+            )
+        raise click.Abort from None
+
+    return filter_objects
+
+
+def _convert_filter_value(
+    prop: str,
+    value: str,
+    filter_str: str,
+    invalid_filters: list,
+) -> str | float | set | None:
+    """Convert filter value based on property type."""
+    try:
+        if prop in ["price_usd"]:
+            return float(value) if value != "null" else None
+        if prop in ["colors"]:
+            return set(value.split(",")) if value else None
+    except ValueError:
+        invalid_filters.append(filter_str)
+        return None
+    else:
+        return value
+
+
+def _parse_convenience_filters(kwargs: dict) -> list:
+    """Parse convenience filter options into filter objects."""
+    from stacks.filtering import CardPropertyFilter, FilterOperator
+
+    filter_objects = []
+    convenience_filters = [
+        ("colors", "colors", FilterOperator.IN, lambda x: set(x.split(","))),
+        ("type_line", "type_line", FilterOperator.CONTAINS, lambda x: x),
+        ("rarity", "rarity", FilterOperator.EQUALS, lambda x: x),
+        ("price_min", "price_usd", FilterOperator.GREATER_EQUAL, lambda x: x),
+        ("price_max", "price_usd", FilterOperator.LESS_EQUAL, lambda x: x),
+    ]
+
+    for kwarg_name, prop_name, operator, converter in convenience_filters:
+        value = kwargs.get(kwarg_name)
+        if value and (kwarg_name != "colors" or isinstance(value, str)):
+            converted_value = converter(value)
+            filter_objects.append(
+                CardPropertyFilter(prop_name, operator, converted_value),
+            )
+
+    return filter_objects
+
+
+def _write_filtered_result(filtered_stack: Stack, output: Path) -> None:
+    """Write the filtered stack to the output file."""
+    from stacks.parsing.io_registry import write_stack_to_file
+
+    from .converters import normalize_stack_for_output
+
+    output_ext = output.suffix.lstrip(".")
+    normalized_stack = normalize_stack_for_output(filtered_stack, output_ext)
+    write_stack_to_file(normalized_stack, str(output))
