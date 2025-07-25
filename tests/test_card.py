@@ -153,7 +153,7 @@ class TestCard:
         expected = {
             "name": "Lightning Bolt",
             "slug": "lightning-bolt",
-            "tags": [],
+            "tags": set(),
             "source": None,
         }
         assert data == expected
@@ -216,7 +216,7 @@ class TestCard:
         expected = {
             "name": "Lightning Bolt",
             "slug": "lightning-bolt",
-            "tags": [],
+            "tags": set(),
             "source": None,
         }
         assert data == expected
@@ -291,7 +291,7 @@ class TestCardSource:
         expected = {
             "name": "Lightning Bolt",
             "slug": "lightning-bolt",
-            "tags": [],
+            "tags": set(),
             "source": Path("/path/to/deck.txt"),
         }
         assert data == expected
@@ -303,7 +303,7 @@ class TestCardSource:
         expected = {
             "name": "Lightning Bolt",
             "slug": "lightning-bolt",
-            "tags": [],
+            "tags": set(),
             "source": None,
         }
         assert data == expected

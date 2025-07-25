@@ -827,17 +827,17 @@ def test_csv_basic_card_with_tags() -> None:
     # Check Lightning Bolt has the correct tags
     lightning_bolts = [card for card in cards if card.name == "Lightning Bolt"]
     assert len(lightning_bolts) == 1
-    assert lightning_bolts[0].tags == ["red", "burn", "instant"]
+    assert lightning_bolts[0].tags == {"red", "burn", "instant"}
 
     # Check Counterspell has the correct tags
     counterspells = [card for card in cards if card.name == "Counterspell"]
     assert len(counterspells) == 2
-    assert all(card.tags == ["blue", "control"] for card in counterspells)
+    assert all(card.tags == {"blue", "control"} for card in counterspells)
 
     # Check Black Lotus has no tags
     black_lotus = [card for card in cards if card.name == "Black Lotus"]
     assert len(black_lotus) == 1
-    assert black_lotus[0].tags == []
+    assert black_lotus[0].tags == set()
 
 
 def test_csv_print_with_tags() -> None:
@@ -854,12 +854,12 @@ def test_csv_print_with_tags() -> None:
     assert all(isinstance(card, Print) for card in cards)
 
     lightning_bolt = next(card for card in cards if card.name == "Lightning Bolt")
-    assert lightning_bolt.tags == ["red", "expensive"]
+    assert lightning_bolt.tags == {"red", "expensive"}
     assert lightning_bolt.set == "Beta"
 
     counterspells = [card for card in cards if card.name == "Counterspell"]
     assert len(counterspells) == 2
-    assert all(card.tags == ["blue", "control", "vintage"] for card in counterspells)
+    assert all(card.tags == {"blue", "control", "vintage"} for card in counterspells)
 
 
 def test_tags_parsing_edge_cases() -> None:
@@ -869,14 +869,14 @@ def test_tags_parsing_edge_cases() -> None:
     reader = CsvStackReader()
 
     # Test empty tags
-    assert reader._parse_tags("") == []
-    assert reader._parse_tags("   ") == []
+    assert reader._parse_tags("") == set()
+    assert reader._parse_tags("   ") == set()
 
     # Test single tag
-    assert reader._parse_tags("red") == ["red"]
+    assert reader._parse_tags("red") == {"red"}
 
     # Test tags with extra whitespace
-    assert reader._parse_tags("red , blue , green") == ["red", "blue", "green"]
+    assert reader._parse_tags("red , blue , green") == {"red", "blue", "green"}
 
     # Test tags with empty elements
-    assert reader._parse_tags("red,,blue") == ["red", "blue"]
+    assert reader._parse_tags("red,,blue") == {"red", "blue"}

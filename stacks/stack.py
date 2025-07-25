@@ -125,9 +125,8 @@ class Stack(Generic[T]):
 
         for card, copies in self._cards.items():
             # Create a new card with the added tag
-            existing_tags = list(card.tags) if card.tags else []
-            if tag not in existing_tags:
-                existing_tags.append(tag)
+            existing_tags = set(card.tags) if card.tags else set()
+            existing_tags.add(tag)
 
             # Create a new card instance with the updated tags
             new_card = card.model_copy(update={"tags": existing_tags})

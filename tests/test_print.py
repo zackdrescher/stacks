@@ -264,7 +264,7 @@ class TestPrint:
             "json_id": None,
             "price": 10.0,
             "slug": "lightning-bolt",
-            "tags": [],
+            "tags": set(),
             "source": None,
         }
         assert data == expected

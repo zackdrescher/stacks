@@ -244,12 +244,12 @@ class CsvStackReader(StackReader):
             msg = f"Invalid {field_name} '{value}' at row {row_num}"
             raise ValueError(msg) from exc
 
-    def _parse_tags(self, tags_str: str) -> list[str]:
+    def _parse_tags(self, tags_str: str) -> set[str]:
         """Parse tags from a comma-separated string."""
         if not tags_str.strip():
-            return []
+            return set()
         # Split by comma and strip whitespace from each tag
-        return [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+        return {tag.strip() for tag in tags_str.split(",") if tag.strip()}
 
     def _parse_csv_row(
         self,
@@ -270,7 +270,7 @@ class CsvStackReader(StackReader):
             return self._create_print_cards(row, card_name, count, row_num)
 
         # For basic cards, parse tags if present
-        tags = []
+        tags: set[str] = set()
         if "Tags" in row:
             tags = self._parse_tags(row["Tags"])
 
@@ -303,7 +303,7 @@ class CsvStackReader(StackReader):
             price_usd = self._safe_float(row["Price USD"], "price", row_num)
 
         # Parse tags if present
-        tags = []
+        tags: set[str] = set()
         if "Tags" in row:
             tags = self._parse_tags(row["Tags"])
 
@@ -343,7 +343,7 @@ class CsvStackReader(StackReader):
             price = self._safe_float(row["Price"], "price", row_num)
 
         # Parse tags if present
-        tags = []
+        tags: set[str] = set()
         if "Tags" in row:
             tags = self._parse_tags(row["Tags"])
 
@@ -363,13 +363,13 @@ class CsvStackReader(StackReader):
         self,
         card_name: str,
         count: int,
-        tags: list[str] | None = None,
+        tags: set[str] | None = None,
     ) -> list[Any]:
         """Create basic Card objects."""
         from stacks.cards.card import Card
 
         if tags is None:
-            tags = []
+            tags = set()
 
         return [Card(name=card_name, tags=tags) for _ in range(count)]
 

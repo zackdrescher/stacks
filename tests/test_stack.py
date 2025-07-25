@@ -750,7 +750,7 @@ class TestStack:
 
         # Save original card for comparison
         original_card = next(iter(stack))
-        assert original_card.tags == []
+        assert original_card.tags == set()
 
         # Add tag in place
         stack.add_tag("burn")
@@ -758,7 +758,7 @@ class TestStack:
         # Stack should now have the tagged card
         tagged_card = next(iter(stack))
         assert tagged_card.name == "Lightning Bolt"
-        assert tagged_card.tags == ["burn"]
+        assert tagged_card.tags == {"burn"}
 
     def test_add_tag_multiple_cards(self) -> None:
         """Test adding tag to a stack with multiple cards."""
@@ -782,24 +782,24 @@ class TestStack:
     def test_add_tag_preserves_existing_tags(self) -> None:
         """Test that adding a tag preserves existing tags."""
         stack: Stack[Card] = Stack()
-        card = Card(name="Lightning Bolt", tags=["red", "instant"])
+        card = Card(name="Lightning Bolt", tags={"red", "instant"})
         stack.add(card)
 
         stack.add_tag("vintage")
 
         tagged_card = next(iter(stack))
-        assert tagged_card.tags == ["red", "instant", "vintage"]
+        assert tagged_card.tags == {"red", "instant", "vintage"}
 
     def test_add_tag_avoids_duplicates(self) -> None:
         """Test that adding an existing tag doesn't create duplicates."""
         stack: Stack[Card] = Stack()
-        card = Card(name="Lightning Bolt", tags=["red"])
+        card = Card(name="Lightning Bolt", tags={"red"})
         stack.add(card)
 
         stack.add_tag("red")
 
         tagged_card = next(iter(stack))
-        assert tagged_card.tags == ["red"]
+        assert tagged_card.tags == {"red"}
 
     def test_add_tag_modifies_stack_in_place(self) -> None:
         """Test that add_tag modifies the stack in place."""
@@ -809,11 +809,11 @@ class TestStack:
 
         # Check original card has no tags
         original_card = next(iter(stack))
-        assert original_card.tags == []
+        assert original_card.tags == set()
 
         # Add tag in place
         stack.add_tag("test")
 
         # Same stack object should now have tagged cards
         tagged_card = next(iter(stack))
-        assert tagged_card.tags == ["test"]
+        assert tagged_card.tags == {"test"}

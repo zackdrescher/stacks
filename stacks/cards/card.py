@@ -14,7 +14,7 @@ class Card(BaseModel):
     model_config = {"frozen": True}
 
     name: str
-    tags: list[str] = []
+    tags: set[str] = set()
     source: Path | None = None
 
     def identity(self) -> tuple:
