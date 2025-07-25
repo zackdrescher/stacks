@@ -55,6 +55,22 @@ class Stack(Generic[T]):
             return len(self._cards[card])
         return 0
 
+    def contains(self, card: T) -> bool:
+        """Check if a card exists in the stack using card equality.
+
+        This method uses the card's __eq__ method to check for existence,
+        which may be useful when you want to check based on card equality
+        rather than dictionary key lookup.
+
+        Args:
+            card: The card to check for.
+
+        Returns:
+            True if the card exists in the stack, False otherwise.
+
+        """
+        return any(existing_card == card for existing_card in self._cards)
+
     def unique_cards(self) -> list[T]:
         """Get a list of unique cards in the stack.
 

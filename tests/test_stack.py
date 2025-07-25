@@ -1,6 +1,8 @@
 """Tests for the Stack class."""
 
 from stacks.cards.card import Card
+from stacks.cards.print import Print
+from stacks.cards.scryfall_card import ScryfallCard
 from stacks.stack import Stack
 
 
@@ -329,6 +331,146 @@ class TestStack:
 
         # This would require a mixed stack, but the type system prevents it
         # The fact that they have different identities is what matters
+
+    def test_contains_empty_stack(self) -> None:
+        """Test contains method on empty stack."""
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt")
+
+        assert not stack.contains(card)
+
+    def test_contains_card_in_stack(self) -> None:
+        """Test contains method when card exists in stack."""
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt")
+
+        stack.add(card)
+        assert stack.contains(card)
+
+    def test_contains_card_not_in_stack(self) -> None:
+        """Test contains method when card doesn't exist in stack."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+
+        stack.add(card1)
+        assert not stack.contains(card2)
+
+    def test_contains_multiple_copies(self) -> None:
+        """Test contains method with multiple copies of same card."""
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt")
+
+        # Add multiple copies
+        for _ in range(3):
+            stack.add(card)
+
+        assert stack.contains(card)
+
+    def test_contains_uses_card_equality(self) -> None:
+        """Test that contains uses card equality, not object identity."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Lightning Bolt")  # Same name, different object
+
+        # Add first card
+        stack.add(card1)
+
+        # Check if second card (different object, same name) is contained
+        assert stack.contains(card2)
+        assert card1 == card2  # They should be equal
+        assert card1 is not card2  # But not the same object
+
+    def test_contains_different_card_types(self) -> None:
+        """Test contains method with different card types that are equal."""
+        from stacks.cards.print import Print
+
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt")
+        print_card = Print(name="Lightning Bolt", set="LEA")
+
+        # Add basic card
+        stack.add(card)
+
+        # Print card should be considered contained due to equality
+        assert stack.contains(print_card)
+        assert card == print_card
+
+    def test_contains_mixed_cards(self) -> None:
+        """Test contains method with multiple different cards."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        card3 = Card(name="Giant Growth")
+        card4 = Card(name="Dark Ritual")
+
+        # Add some cards
+        stack.add(card1)
+        stack.add(card2)
+        stack.add(card3)
+
+        # Test contains for added cards
+        assert stack.contains(card1)
+        assert stack.contains(card2)
+        assert stack.contains(card3)
+
+        # Test contains for non-added card
+        assert not stack.contains(card4)
+
+    def test_contains_case_sensitive(self) -> None:
+        """Test that contains respects differences in card names after slugification."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Lightning Strike")  # Different card entirely
+
+        stack.add(card1)
+
+        # These should be different cards
+        assert not stack.contains(card2)
+        assert card1 != card2
+
+    def test_contains_performance_vs_dictionary_lookup(self) -> None:
+        """Test that contains method works correctly with card equality."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Lightning Bolt")  # Equal but different object
+
+        stack.add(card1)
+
+        # The contains method should find equal cards
+        method_contains = stack.contains(card2)
+        assert method_contains
+
+        # Test with non-existent card
+        card3 = Card(name="Counterspell")
+        method_contains_3 = stack.contains(card3)
+        assert not method_contains_3
+
+    def test_card_subtype_contains(self) -> None:
+        """Test that contain method works with the card calss hierarchy."""
+        stack1: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Print(name="Lightning Bolt", set="set")
+        card3 = ScryfallCard(name="Lightning Bolt", oracle_id="test")
+
+        stack1.add(card1)
+
+        assert stack1.contains(card2)
+        assert stack1.contains(card3)
+
+        stack2: Stack[Card] = Stack()
+
+        stack2.add(card2)
+
+        assert stack2.contains(card1)
+        assert stack2.contains(card3)
+
+        stack3: Stack[Card] = Stack()
+
+        stack3.add(card3)
+
+        assert stack3.contains(card1)
+        assert stack3.contains(card2)
 
     def test_intersect_empty_stacks(self) -> None:
         """Test intersection of two empty stacks."""
