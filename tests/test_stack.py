@@ -733,3 +733,88 @@ class TestStack:
         assert final_result.count(card1) == 1
         assert final_result.count(card2) == 1
         assert final_result.count(card3) == 1
+
+    def test_add_tag_empty_stack(self) -> None:
+        """Test adding tag to an empty stack."""
+        stack: Stack[Card] = Stack()
+        tagged_stack = stack.add_tag("test-tag")
+
+        assert len(list(tagged_stack)) == 0
+        assert tagged_stack.unique_cards() == []
+
+    def test_add_tag_single_card(self) -> None:
+        """Test adding tag to a stack with a single card."""
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt")
+        stack.add(card)
+
+        tagged_stack = stack.add_tag("burn")
+
+        # Original stack should be unchanged
+        original_card = next(iter(stack))
+        assert original_card.tags == []
+
+        # Tagged stack should have the new tag
+        tagged_card = next(iter(tagged_stack))
+        assert tagged_card.name == "Lightning Bolt"
+        assert tagged_card.tags == ["burn"]
+
+    def test_add_tag_multiple_cards(self) -> None:
+        """Test adding tag to a stack with multiple cards."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+
+        # Add multiple copies
+        for _ in range(2):
+            stack.add(card1)
+        stack.add(card2)
+
+        tagged_stack = stack.add_tag("my-deck")
+
+        # Check all cards have the tag
+        tagged_cards = list(tagged_stack)
+        assert len(tagged_cards) == 3
+        for card in tagged_cards:
+            assert "my-deck" in card.tags
+
+    def test_add_tag_preserves_existing_tags(self) -> None:
+        """Test that adding a tag preserves existing tags."""
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt", tags=["red", "instant"])
+        stack.add(card)
+
+        tagged_stack = stack.add_tag("vintage")
+
+        tagged_card = next(iter(tagged_stack))
+        assert tagged_card.tags == ["red", "instant", "vintage"]
+
+    def test_add_tag_avoids_duplicates(self) -> None:
+        """Test that adding an existing tag doesn't create duplicates."""
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt", tags=["red"])
+        stack.add(card)
+
+        tagged_stack = stack.add_tag("red")
+
+        tagged_card = next(iter(tagged_stack))
+        assert tagged_card.tags == ["red"]
+
+    def test_add_tag_returns_new_stack(self) -> None:
+        """Test that add_tag returns a new stack and doesn't modify the original."""
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt")
+        stack.add(card)
+
+        tagged_stack = stack.add_tag("test")
+
+        # Should be different objects
+        assert stack is not tagged_stack
+
+        # Original should be unchanged
+        original_card = next(iter(stack))
+        assert original_card.tags == []
+
+        # Tagged stack should have the tag
+        tagged_card = next(iter(tagged_stack))
+        assert tagged_card.tags == ["test"]

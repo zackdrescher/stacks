@@ -110,6 +110,31 @@ class Stack(Generic[T]):
             result.add(card)
         return result
 
+    def add_tag(self, tag: str) -> Stack[T]:
+        """Create a new stack with the specified tag added to all cards.
+
+        Since cards are immutable, this creates new card instances with the
+        added tag and returns a new Stack containing those cards.
+
+        Args:
+            tag: The tag to add to all cards in the stack.
+
+        Returns:
+            A new Stack containing cards with the added tag.
+
+        """
+        result: Stack[T] = Stack()
+        for card in self:
+            # Create a new card with the added tag
+            existing_tags = list(card.tags) if card.tags else []
+            if tag not in existing_tags:
+                existing_tags.append(tag)
+
+            # Create a new card instance with the updated tags
+            new_card = card.model_copy(update={"tags": existing_tags})
+            result.add(new_card)
+        return result
+
     def __str__(self) -> str:
         """Return a string representation of the stack.
 
