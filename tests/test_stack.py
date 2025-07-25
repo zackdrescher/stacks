@@ -737,10 +737,10 @@ class TestStack:
     def test_add_tag_empty_stack(self) -> None:
         """Test adding tag to an empty stack."""
         stack: Stack[Card] = Stack()
-        tagged_stack = stack.add_tag("test-tag")
+        stack.add_tag("test-tag")
 
-        assert len(list(tagged_stack)) == 0
-        assert tagged_stack.unique_cards() == []
+        assert len(list(stack)) == 0
+        assert stack.unique_cards() == []
 
     def test_add_tag_single_card(self) -> None:
         """Test adding tag to a stack with a single card."""
@@ -748,14 +748,15 @@ class TestStack:
         card = Card(name="Lightning Bolt")
         stack.add(card)
 
-        tagged_stack = stack.add_tag("burn")
-
-        # Original stack should be unchanged
+        # Save original card for comparison
         original_card = next(iter(stack))
         assert original_card.tags == []
 
-        # Tagged stack should have the new tag
-        tagged_card = next(iter(tagged_stack))
+        # Add tag in place
+        stack.add_tag("burn")
+
+        # Stack should now have the tagged card
+        tagged_card = next(iter(stack))
         assert tagged_card.name == "Lightning Bolt"
         assert tagged_card.tags == ["burn"]
 
@@ -770,10 +771,10 @@ class TestStack:
             stack.add(card1)
         stack.add(card2)
 
-        tagged_stack = stack.add_tag("my-deck")
+        stack.add_tag("my-deck")
 
         # Check all cards have the tag
-        tagged_cards = list(tagged_stack)
+        tagged_cards = list(stack)
         assert len(tagged_cards) == 3
         for card in tagged_cards:
             assert "my-deck" in card.tags
@@ -784,9 +785,9 @@ class TestStack:
         card = Card(name="Lightning Bolt", tags=["red", "instant"])
         stack.add(card)
 
-        tagged_stack = stack.add_tag("vintage")
+        stack.add_tag("vintage")
 
-        tagged_card = next(iter(tagged_stack))
+        tagged_card = next(iter(stack))
         assert tagged_card.tags == ["red", "instant", "vintage"]
 
     def test_add_tag_avoids_duplicates(self) -> None:
@@ -795,26 +796,24 @@ class TestStack:
         card = Card(name="Lightning Bolt", tags=["red"])
         stack.add(card)
 
-        tagged_stack = stack.add_tag("red")
+        stack.add_tag("red")
 
-        tagged_card = next(iter(tagged_stack))
+        tagged_card = next(iter(stack))
         assert tagged_card.tags == ["red"]
 
-    def test_add_tag_returns_new_stack(self) -> None:
-        """Test that add_tag returns a new stack and doesn't modify the original."""
+    def test_add_tag_modifies_stack_in_place(self) -> None:
+        """Test that add_tag modifies the stack in place."""
         stack: Stack[Card] = Stack()
         card = Card(name="Lightning Bolt")
         stack.add(card)
 
-        tagged_stack = stack.add_tag("test")
-
-        # Should be different objects
-        assert stack is not tagged_stack
-
-        # Original should be unchanged
+        # Check original card has no tags
         original_card = next(iter(stack))
         assert original_card.tags == []
 
-        # Tagged stack should have the tag
-        tagged_card = next(iter(tagged_stack))
+        # Add tag in place
+        stack.add_tag("test")
+
+        # Same stack object should now have tagged cards
+        tagged_card = next(iter(stack))
         assert tagged_card.tags == ["test"]

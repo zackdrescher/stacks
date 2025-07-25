@@ -110,21 +110,20 @@ class Stack(Generic[T]):
             result.add(card)
         return result
 
-    def add_tag(self, tag: str) -> Stack[T]:
-        """Create a new stack with the specified tag added to all cards.
+    def add_tag(self, tag: str) -> None:
+        """Add the specified tag to all cards in the stack in place.
 
         Since cards are immutable, this creates new card instances with the
-        added tag and returns a new Stack containing those cards.
+        added tag and replaces the existing cards in the stack.
 
         Args:
             tag: The tag to add to all cards in the stack.
 
-        Returns:
-            A new Stack containing cards with the added tag.
-
         """
-        result: Stack[T] = Stack()
-        for card in self:
+        # Create a new cards dictionary to replace the existing one
+        new_cards: dict[T, list[T]] = defaultdict(list)
+
+        for card, copies in self._cards.items():
             # Create a new card with the added tag
             existing_tags = list(card.tags) if card.tags else []
             if tag not in existing_tags:
@@ -132,8 +131,13 @@ class Stack(Generic[T]):
 
             # Create a new card instance with the updated tags
             new_card = card.model_copy(update={"tags": existing_tags})
-            result.add(new_card)
-        return result
+
+            # Create new copies with the updated tags
+            for _ in copies:
+                new_cards[new_card].append(new_card)
+
+        # Replace the cards dictionary
+        self._cards = new_cards
 
     def __str__(self) -> str:
         """Return a string representation of the stack.
