@@ -51,9 +51,7 @@ class Stack(Generic[T]):
             The number of copies of the card in the stack.
 
         """
-        if card in self._cards:
-            return len(self._cards[card])
-        return 0
+        return len(self.match(card))
 
     def contains(self, card: T) -> bool:
         """Check if a card exists in the stack using card equality.
@@ -98,6 +96,7 @@ class Stack(Generic[T]):
             A list of unique cards in the stack.
 
         """
+        self._clean_dict()
         return list(self._cards.keys())
 
     def __len__(self) -> int:
@@ -108,6 +107,18 @@ class Stack(Generic[T]):
 
         """
         return sum(len(copies) for copies in self._cards.values())
+
+    def __bool__(self) -> bool:
+        """Return True if the stack contains at least one item, otherwise False.
+
+        This method allows the stack to be evaluated in a boolean context,
+        such as in an if statement. It returns True when the stack is not empty,
+        and False when it is empty.
+        """
+        for copies in self._cards.values():
+            return len(copies) > 0
+
+        return False
 
     def __iter__(self) -> Iterator[T]:
         """Iterate over all copies of cards.
@@ -132,11 +143,13 @@ class Stack(Generic[T]):
     def intersect(self, other: Stack) -> Stack:
         """Get the intersection of this stack with another stack."""
         result: Stack = Stack()
+
         for card in self.unique_cards():
-            if card in other._cards:
-                min_count = min(self.count(card), other.count(card))
-                if min_count > 0:
-                    result._cards[card] = self._cards[card][:min_count]
+            other_matches = other.count(card)
+
+            min_adds = min(other_matches, self.count(card))
+            result._cards[card] = self._cards[card][:min_adds]
+
         return result
 
     def difference(self, other: Stack) -> Stack:
@@ -202,3 +215,8 @@ class Stack(Generic[T]):
     def __repr__(self) -> str:
         """Return a detailed string representation of the stack."""
         return f"Stack({list(self)})"
+
+    def _clean_dict(self) -> None:
+        for key in list(self._cards.keys()):
+            if not self._cards[key]:
+                del self._cards[key]
