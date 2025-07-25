@@ -1,5 +1,9 @@
 """A Magic: The Gathering card with a name."""
 
+from __future__ import annotations
+
+from pathlib import Path
+
 from pydantic import BaseModel, computed_field, field_validator
 from slugify import slugify
 
@@ -11,6 +15,7 @@ class Card(BaseModel):
 
     name: str
     tags: list[str] = []
+    source: Path | None = None
 
     def identity(self) -> tuple:
         """Get a tuple representing the card's identity."""
@@ -40,3 +45,17 @@ class Card(BaseModel):
             msg = "Card name cannot be empty."
             raise ValueError(msg)
         return stripped_value
+
+    @field_validator("source", mode="before")
+    @classmethod
+    def validate_source(cls, value: str | Path | None) -> Path | None:
+        """Convert string input to Path object."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return Path(value)
+        return value
+
+
+# Rebuild the model to resolve forward references
+Card.model_rebuild()

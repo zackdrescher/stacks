@@ -150,7 +150,13 @@ class TestCard:
         """Test serializing a card to a dictionary."""
         card = Card(name="Lightning Bolt")
         data = card.model_dump()
-        assert data == {"name": "Lightning Bolt", "slug": "lightning-bolt", "tags": []}
+        expected = {
+            "name": "Lightning Bolt",
+            "slug": "lightning-bolt",
+            "tags": [],
+            "source": None,
+        }
+        assert data == expected
 
     def test_card_model_validate(self) -> None:
         """Test creating a card from a dictionary."""
@@ -207,7 +213,12 @@ class TestCard:
         """Test that slug is included when dumping the model."""
         card = Card(name="Lightning Bolt")
         data = card.model_dump()
-        expected = {"name": "Lightning Bolt", "slug": "lightning-bolt", "tags": []}
+        expected = {
+            "name": "Lightning Bolt",
+            "slug": "lightning-bolt",
+            "tags": [],
+            "source": None,
+        }
         assert data == expected
 
     def test_card_immutability_comprehensive(self) -> None:
@@ -223,3 +234,152 @@ class TestCard:
         # Verify nothing changed
         assert card.name == original_name
         assert card.slug == original_slug
+
+
+class TestCardSource:
+    """Test cases for the Card source property."""
+
+    def test_card_creation_without_source(self) -> None:
+        """Test creating a card without specifying source defaults to None."""
+        card = Card(name="Lightning Bolt")
+        assert card.source is None
+
+    def test_card_creation_with_source_none(self) -> None:
+        """Test creating a card with explicit None source."""
+        card = Card(name="Lightning Bolt", source=None)
+        assert card.source is None
+
+    def test_card_creation_with_source_string(self) -> None:
+        """Test creating a card with string source path."""
+        from pathlib import Path
+
+        card = Card(name="Lightning Bolt", source="/path/to/deck.txt")  # type: ignore[arg-type]
+        assert card.source == Path("/path/to/deck.txt")
+        assert isinstance(card.source, Path)
+
+    def test_card_creation_with_source_path_object(self) -> None:
+        """Test creating a card with Path object source."""
+        from pathlib import Path
+
+        source_path = Path("/path/to/deck.txt")
+        card = Card(name="Lightning Bolt", source=source_path)
+        assert card.source == source_path
+        assert isinstance(card.source, Path)
+
+    def test_card_creation_with_relative_path_string(self) -> None:
+        """Test creating a card with relative path string."""
+        from pathlib import Path
+
+        card = Card(name="Lightning Bolt", source="deck.txt")  # type: ignore[arg-type]
+        assert card.source == Path("deck.txt")
+        assert isinstance(card.source, Path)
+
+    def test_card_creation_with_empty_string_source(self) -> None:
+        """Test creating a card with empty string source."""
+        from pathlib import Path
+
+        card = Card(name="Lightning Bolt", source="")  # type: ignore[arg-type]
+        assert card.source == Path()
+        assert isinstance(card.source, Path)
+
+    def test_card_model_dump_with_source(self) -> None:
+        """Test serializing a card with source to dictionary."""
+        from pathlib import Path
+
+        card = Card(name="Lightning Bolt", source="/path/to/deck.txt")  # type: ignore[arg-type]
+        data = card.model_dump()
+        expected = {
+            "name": "Lightning Bolt",
+            "slug": "lightning-bolt",
+            "tags": [],
+            "source": Path("/path/to/deck.txt"),
+        }
+        assert data == expected
+
+    def test_card_model_dump_without_source(self) -> None:
+        """Test serializing a card without source to dictionary."""
+        card = Card(name="Lightning Bolt")
+        data = card.model_dump()
+        expected = {
+            "name": "Lightning Bolt",
+            "slug": "lightning-bolt",
+            "tags": [],
+            "source": None,
+        }
+        assert data == expected
+
+    def test_card_model_validate_with_source_string(self) -> None:
+        """Test creating a card from dictionary with string source."""
+        from pathlib import Path
+
+        data = {"name": "Lightning Bolt", "source": "/path/to/deck.txt"}
+        card = Card.model_validate(data)
+        assert card.name == "Lightning Bolt"
+        assert card.source == Path("/path/to/deck.txt")
+
+    def test_card_model_validate_with_source_none(self) -> None:
+        """Test creating a card from dictionary with None source."""
+        data = {"name": "Lightning Bolt", "source": None}
+        card = Card.model_validate(data)
+        assert card.name == "Lightning Bolt"
+        assert card.source is None
+
+    def test_card_equality_ignores_source(self) -> None:
+        """Test that card equality is based on name only, not source."""
+        card1 = Card(name="Lightning Bolt", source="/path/to/deck1.txt")  # type: ignore[arg-type]
+        card2 = Card(name="Lightning Bolt", source="/path/to/deck2.txt")  # type: ignore[arg-type]
+        card3 = Card(name="Lightning Bolt", source=None)
+
+        # All should be equal since they have the same name
+        assert card1 == card2
+        assert card1 == card3
+        assert card2 == card3
+
+    def test_card_hash_ignores_source(self) -> None:
+        """Test that card hash is based on name only, not source."""
+        card1 = Card(name="Lightning Bolt", source="/path/to/deck1.txt")  # type: ignore[arg-type]
+        card2 = Card(name="Lightning Bolt", source="/path/to/deck2.txt")  # type: ignore[arg-type]
+        card3 = Card(name="Lightning Bolt", source=None)
+
+        # All should have the same hash since they have the same name
+        assert hash(card1) == hash(card2)
+        assert hash(card1) == hash(card3)
+        assert hash(card2) == hash(card3)
+
+    def test_card_source_immutability(self) -> None:
+        """Test that card source cannot be modified after creation."""
+        from pathlib import Path
+
+        card = Card(name="Lightning Bolt", source="/path/to/deck.txt")  # type: ignore[arg-type]
+        original_source = card.source
+
+        with pytest.raises(ValidationError) as exc_info:
+            card.source = Path("/new/path.txt")  # type: ignore[misc]
+
+        # The source should remain unchanged
+        assert card.source == original_source
+        # Check that the error is about the model being frozen
+        error_msg = str(exc_info.value).lower()
+        assert "frozen" in error_msg or "immutable" in error_msg
+
+    def test_card_with_source_in_set(self) -> None:
+        """Test that cards with sources can be used in sets properly."""
+        card1 = Card(name="Lightning Bolt", source="/path/to/deck1.txt")  # type: ignore[arg-type]
+        card2 = Card(name="Lightning Bolt", source="/path/to/deck2.txt")  # type: ignore[arg-type]
+        card3 = Card(name="Counterspell", source="/path/to/deck1.txt")  # type: ignore[arg-type]
+
+        card_set = {card1, card2, card3}
+        # card1 and card2 should be treated as the same card
+        assert len(card_set) == 2
+
+    def test_card_identity_ignores_source(self) -> None:
+        """Test that card identity is based on name only, not source."""
+        card1 = Card(name="Lightning Bolt", source="/path/to/deck1.txt")  # type: ignore[arg-type]
+        card2 = Card(name="Lightning Bolt", source="/path/to/deck2.txt")  # type: ignore[arg-type]
+        card3 = Card(name="Lightning Bolt", source=None)
+
+        # All should have the same identity
+        assert card1.identity() == card2.identity()
+        assert card1.identity() == card3.identity()
+        assert card2.identity() == card3.identity()
+        assert card1.identity() == ("lightning-bolt",)
