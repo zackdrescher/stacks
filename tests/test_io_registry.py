@@ -156,7 +156,7 @@ class TestLoadStackFromFile:
         """Test successful loading of a stack from a file."""
         mock_file_content = "Test Card\n"
 
-        with patch("builtins.open", mock_open(read_data=mock_file_content)):
+        with patch("pathlib.Path.open", mock_open(read_data=mock_file_content)):
             stack = load_stack_from_file("test.txt")
 
             assert isinstance(stack, Stack)
@@ -168,7 +168,15 @@ class TestLoadStackFromFile:
         """Test loading with different file extension."""
         mock_file_content = "Test Print,TST,False,1.0\n"
 
-        with patch("builtins.open", mock_open(read_data=mock_file_content)):
+        with patch("pathlib.Path.open", mock_open(read_data=mock_file_content)):
+            stack = load_stack_from_file("test.dat")
+
+            assert isinstance(stack, Stack)
+            cards = list(stack)
+            assert len(cards) == 1
+            assert cards[0].name == "Test Print"
+
+        with patch("pathlib.Path.open", mock_open(read_data=mock_file_content)):
             stack = load_stack_from_file("test.dat")
 
             assert isinstance(stack, Stack)
@@ -190,21 +198,21 @@ class TestLoadStackFromFile:
         """Test loading file with multiple dots in filename."""
         mock_file_content = "Test Card\n"
 
-        with patch("builtins.open", mock_open(read_data=mock_file_content)):
+        with patch("pathlib.Path.open", mock_open(read_data=mock_file_content)):
             stack = load_stack_from_file("test.backup.txt")
 
             assert isinstance(stack, Stack)
             cards = list(stack)
             assert len(cards) == 1
 
-    @patch("builtins.open")
+    @patch("pathlib.Path.open")
     def test_load_stack_file_encoding(self, mock_open_func) -> None:
         """Test that file is opened with correct encoding."""
         reader_registry["txt"] = MockCardReader()
 
         load_stack_from_file("test.txt")
 
-        mock_open_func.assert_called_once_with("test.txt", encoding="utf-8")
+        mock_open_func.assert_called_once_with(encoding="utf-8")
 
     def test_load_stack_reader_exception_propagation(self) -> None:
         """Test that exceptions from readers are properly propagated."""
@@ -217,10 +225,63 @@ class TestLoadStackFromFile:
         reader_registry["fail"] = FailingReader()
 
         with (
-            patch("builtins.open", mock_open(read_data="")),
+            patch("pathlib.Path.open", mock_open(read_data="")),
             pytest.raises(ValueError, match="Reader failed"),
         ):
             load_stack_from_file("test.fail")
+
+    def test_load_stack_from_file_sets_source(self) -> None:
+        """Test that load_stack_from_file sets the source property on cards."""
+
+        class MockReaderWithSource(StackReader[Card]):
+            def read(self, file: IO) -> Stack[Card]:
+                return Stack([Card(name="Test Card")])
+
+        reader_registry["test"] = MockReaderWithSource()
+
+        with patch("pathlib.Path.open", mock_open(read_data="test content")):
+            stack = load_stack_from_file("test_file.test")
+            cards = list(stack)
+
+            # Check that all cards have the source property set
+            assert len(cards) == 1
+            assert cards[0].name == "Test Card"
+            assert cards[0].source == Path("test_file.test")
+
+    def test_load_stack_from_file_uses_read_with_source(self) -> None:
+        """Test that load_stack_from_file calls read_with_source method."""
+
+        class MockReaderForSourceTest(StackReader[Card]):
+            def __init__(self):
+                self.read_called = False
+                self.read_with_source_called = False
+                self.source_passed = None
+
+            def read(self, file: IO) -> Stack[Card]:
+                self.read_called = True
+                return Stack([Card(name="Test Card")])
+
+            def read_with_source(self, file: IO, source=None) -> Stack[Card]:
+                self.read_with_source_called = True
+                self.source_passed = source
+                # Create cards with source set
+                return Stack([Card(name="Test Card", source=source)])
+
+        reader_instance = MockReaderForSourceTest()
+        reader_registry["test"] = reader_instance
+
+        with patch("pathlib.Path.open", mock_open(read_data="test content")):
+            stack = load_stack_from_file("test_file.test")
+            cards = list(stack)
+
+            # Verify that read_with_source was called instead of read
+            assert reader_instance.read_with_source_called is True
+            assert reader_instance.read_called is False
+            assert reader_instance.source_passed == Path("test_file.test")
+
+            # Verify source was set on cards
+            assert len(cards) == 1
+            assert cards[0].source == Path("test_file.test")
 
 
 class TestWriteStackToFile:
@@ -244,12 +305,11 @@ class TestWriteStackToFile:
 
     def test_write_stack_to_file_success(self, sample_stack_cards: Stack[Card]) -> None:
         """Test successful writing of a stack to a file."""
-        with patch("builtins.open", mock_open()) as mock_file:
+        with patch("pathlib.Path.open", mock_open()) as mock_file:
             write_stack_to_file(sample_stack_cards, "output.txt")
 
             # Verify file was opened with correct parameters
             mock_file.assert_called_once_with(
-                "output.txt",
                 "w",
                 encoding="utf-8",
                 newline="",
@@ -264,11 +324,10 @@ class TestWriteStackToFile:
         sample_stack_prints: Stack[Print],
     ) -> None:
         """Test writing with different file extension."""
-        with patch("builtins.open", mock_open()) as mock_file:
+        with patch("pathlib.Path.open", mock_open()) as mock_file:
             write_stack_to_file(sample_stack_prints, "output.dat")
 
             mock_file.assert_called_once_with(
-                "output.dat",
                 "w",
                 encoding="utf-8",
                 newline="",
@@ -291,11 +350,10 @@ class TestWriteStackToFile:
 
     def test_write_stack_multiple_dots(self, sample_stack_cards: Stack[Card]) -> None:
         """Test writing file with multiple dots in filename."""
-        with patch("builtins.open", mock_open()) as mock_file:
+        with patch("pathlib.Path.open", mock_open()) as mock_file:
             write_stack_to_file(sample_stack_cards, "output.backup.txt")
 
             mock_file.assert_called_once_with(
-                "output.backup.txt",
                 "w",
                 encoding="utf-8",
                 newline="",
@@ -305,11 +363,10 @@ class TestWriteStackToFile:
         """Test writing an empty stack."""
         empty_stack: Stack[Card] = Stack()
 
-        with patch("builtins.open", mock_open()) as mock_file:
+        with patch("pathlib.Path.open", mock_open()) as mock_file:
             write_stack_to_file(empty_stack, "empty.txt")
 
             mock_file.assert_called_once_with(
-                "empty.txt",
                 "w",
                 encoding="utf-8",
                 newline="",

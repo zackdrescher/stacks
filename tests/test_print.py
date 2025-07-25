@@ -265,6 +265,7 @@ class TestPrint:
             "price": 10.0,
             "slug": "lightning-bolt",
             "tags": [],
+            "source": None,
         }
         assert data == expected
 

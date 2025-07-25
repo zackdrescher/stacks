@@ -40,7 +40,7 @@ def parse_csv_collection_file(file_path: str | Path) -> Stack:
 
     reader = CsvStackReader()
     with file_path.open(encoding="utf-8") as csvfile:
-        return reader.read(csvfile)
+        return reader.read_with_source(csvfile, file_path)
 
 
 def parse_csv_collection_content(csv_content: TextIO) -> Stack:

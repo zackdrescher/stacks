@@ -130,6 +130,55 @@ def test_parse_real_amulet_titan_deck() -> None:
         assert stack.count(Card(name="Scapeshift")) == 4
 
 
+def test_parse_arena_deck_file_sets_source() -> None:
+    """Test that parsing an Arena deck file sets the source property on cards."""
+    from tempfile import NamedTemporaryFile
+
+    content = """Deck
+4 Lightning Bolt
+2 Counterspell
+"""
+
+    with NamedTemporaryFile(mode="w", suffix=".arena", delete=False) as f:
+        f.write(content)
+        f.flush()
+        temp_path = Path(f.name)
+
+    try:
+        stack = parse_arena_deck_file(temp_path)
+        cards = list(stack)
+
+        # Check that all cards have the source property set
+        assert len(cards) == 6  # 4 + 2 cards
+        assert all(card.source == temp_path for card in cards)
+
+        # Check specific cards
+        lightning_bolts = [card for card in cards if card.name == "Lightning Bolt"]
+        counterspells = [card for card in cards if card.name == "Counterspell"]
+
+        assert len(lightning_bolts) == 4
+        assert len(counterspells) == 2
+        assert all(card.source == temp_path for card in lightning_bolts)
+        assert all(card.source == temp_path for card in counterspells)
+
+    finally:
+        temp_path.unlink()
+
+
+def test_parse_arena_deck_content_no_source() -> None:
+    """Test that parsing Arena deck content doesn't set source when no file involved."""
+    content = """Deck
+2 Lightning Bolt
+"""
+
+    stack = parse_arena_deck_content(content)
+    cards = list(stack)
+
+    # Check that source is None when parsing content directly
+    assert len(cards) == 2
+    assert all(card.source is None for card in cards)
+
+
 def test_parse_csv_collection_content() -> None:
     """Test parsing CSV collection content."""
     csv_content = StringIO("""Count,Card Name,Set Name,Collector Number,Foil,Price
@@ -266,6 +315,55 @@ def test_parse_real_csv_collection_file() -> None:
         # Check that we have cards with prices
         priced_cards = [card for card in stack.unique_cards() if card.price is not None]
         assert len(priced_cards) > 0
+
+
+def test_parse_csv_collection_file_sets_source() -> None:
+    """Test that parsing a CSV collection file sets the source property on cards."""
+    from tempfile import NamedTemporaryFile
+
+    csv_content = """Count,Card Name,Set Name,Collector Number,Foil,Price
+1,Lightning Bolt,Beta,1,false,100.00
+2,Counterspell,Alpha,2,true,50.25
+"""
+
+    with NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+        f.write(csv_content)
+        f.flush()
+        temp_path = Path(f.name)
+
+    try:
+        stack = parse_csv_collection_file(temp_path)
+        cards = list(stack)
+
+        # Check that all cards have the source property set
+        assert len(cards) == 3  # 1 + 2 cards
+        assert all(card.source == temp_path for card in cards)
+
+        # Check specific cards
+        lightning_bolts = [card for card in cards if card.name == "Lightning Bolt"]
+        counterspells = [card for card in cards if card.name == "Counterspell"]
+
+        assert len(lightning_bolts) == 1
+        assert len(counterspells) == 2
+        assert all(card.source == temp_path for card in lightning_bolts)
+        assert all(card.source == temp_path for card in counterspells)
+
+    finally:
+        temp_path.unlink()
+
+
+def test_parse_csv_collection_content_no_source() -> None:
+    """Test that parsing CSV content doesn't set source when no file involved."""
+    csv_content = StringIO("""Count,Card Name,Set Name,Collector Number,Foil,Price
+1,Lightning Bolt,Beta,1,false,100.00
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    # Check that source is None when parsing content directly
+    assert len(cards) == 1
+    assert all(card.source is None for card in cards)
 
 
 # CSV Writer Tests

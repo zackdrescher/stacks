@@ -50,7 +50,7 @@ def parse_arena_deck_file(file_path: str | Path) -> Stack[Card]:
 
     reader = ArenaStackReader()
     with file_path.open(encoding="utf-8") as f:
-        return reader.read(f)
+        return reader.read_with_source(f, file_path)
 
 
 def parse_arena_deck_content(content: str) -> Stack[Card]:
