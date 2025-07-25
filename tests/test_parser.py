@@ -673,9 +673,9 @@ def test_csv_auto_detect_scryfall_with_colors() -> None:
     from stacks.cards.colors import Color
     from stacks.cards.scryfall_card import ScryfallCard
 
-    csv_content = StringIO("""Count,Card Name,Set Code,Colors,Mana Cost,Type Line
-1,Lightning Bolt,lea,R,{R},Instant
-1,Izzet Charm,rtr,"R,U",{U}{R},Instant
+    csv_content = StringIO("""Count,Card Name,Set Code,Oracle ID,Colors,Mana Cost,Type Line
+1,Lightning Bolt,lea,oracle123,R,{R},Instant
+1,Izzet Charm,rtr,oracle456,"R,U",{U}{R},Instant
 """)
 
     stack = parse_csv_collection_content(csv_content)
@@ -769,8 +769,8 @@ def test_csv_scryfall_format_with_empty_values() -> None:
 
     csv_content = StringIO(
         """Count,Card Name,Set Code,Oracle ID,Mana Cost,Price USD,Colors
-1,Lightning Bolt,lea,,{R},,
-1,Unknown Card,,,,,
+1,Lightning Bolt,lea,oracle123,{R},,
+1,Unknown Card,,oracle999,,,
 """,
     )
 
@@ -781,13 +781,13 @@ def test_csv_scryfall_format_with_empty_values() -> None:
 
     lightning_bolt = next(card for card in cards if card.name == "Lightning Bolt")
     assert lightning_bolt.set_code == "lea"
-    assert lightning_bolt.oracle_id is None  # Empty string becomes None
+    assert lightning_bolt.oracle_id == "oracle123"
     assert lightning_bolt.price_usd is None
     assert lightning_bolt.colors is None
 
     unknown_card = next(card for card in cards if card.name == "Unknown Card")
     assert unknown_card.set_code is None
-    assert unknown_card.oracle_id is None
+    assert unknown_card.oracle_id == "oracle999"
 
 
 def test_csv_print_format_with_missing_optional_columns() -> None:

@@ -64,7 +64,7 @@ class TestScryfallIntegration:
         # Should be able to instantiate classes
         client = ScryfallClient()
         scryer = Scryer(client)
-        card = ScryfallCard(name="Test Card")
+        card = ScryfallCard(name="Test Card", oracle_id="test-oracle-id")
 
         assert isinstance(client, ScryfallClient)
         assert isinstance(scryer, Scryer)

@@ -13,7 +13,7 @@ from stacks.cards.colors import Color
 class ScryfallCard(Card):
     """A Magic: The Gathering card enriched with Scryfall API data."""
 
-    oracle_id: str | None = None
+    oracle_id: str
     set_code: str | None = None
     collector_number: str | None = None
     mana_cost: str | None = None
@@ -32,3 +32,20 @@ class ScryfallCard(Card):
             return {Color(color) for color in v}
 
         return v
+
+    def identity(self) -> tuple:
+        """Check if prints are equal based on all their fields."""
+        return (self.oracle_id,)
+
+    def __hash__(self) -> int:
+        """Make ScryfallCard hashable based on its identity."""
+        return hash(self.identity())
+
+    def __eq__(self, other: object) -> bool:
+        """Check if prints are equal based on their identity."""
+        card = super().__eq__(other)
+
+        if isinstance(other, ScryfallCard):
+            return self.oracle_id == other.oracle_id
+
+        return card

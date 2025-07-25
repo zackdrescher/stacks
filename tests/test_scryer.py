@@ -28,6 +28,7 @@ class TestScryer:
         card = Card(name="Lightning Bolt")
         scryfall_data = {
             "name": "Lightning Bolt",
+            "oracle_id": "test-oracle-id",
             "set": "lea",
             "collector_number": "162",
             "mana_cost": "{R}",
@@ -46,6 +47,7 @@ class TestScryer:
         assert result is not None
         assert isinstance(result, ScryfallCard)
         assert result.name == "Lightning Bolt"
+        assert result.oracle_id == "test-oracle-id"
         assert result.set_code == "lea"
         assert result.collector_number == "162"
         assert result.mana_cost == "{R}"
@@ -67,6 +69,7 @@ class TestScryer:
         scryfall_data = {
             "name": "Lightning Bolt",
             "set": "m10",
+            "oracle_id": "test-oracle-id",
             "prices": {"usd": None},
         }
         self.mock_client.get_card_by_name.return_value = scryfall_data
@@ -91,6 +94,7 @@ class TestScryer:
         scryfall_data = {
             "name": "Lightning Bolt",
             "prices": {"usd": None},
+            "oracle_id": "test-oracle-id",
         }
         self.mock_client.get_card_by_name.return_value = scryfall_data
 
@@ -132,6 +136,7 @@ class TestScryer:
         card = Card(name="Lightning Bolt")
         scryfall_data = {
             "name": "Lightning Bolt",
+            "oracle_id": "test-oracle-id",
             "prices": {"usd": "15.99"},
             "image_uris": {"normal": "https://example.com/image.jpg"},
         }
@@ -150,6 +155,7 @@ class TestScryer:
         card = Card(name="Lightning Bolt")
         scryfall_data = {
             "name": "Lightning Bolt",
+            "oracle_id": "test-oracle-id",
             "prices": {"usd": None},
         }
         self.mock_client.get_card_by_name.return_value = scryfall_data
@@ -167,6 +173,7 @@ class TestScryer:
         card = Card(name="Lightning Bolt")
         scryfall_data = {
             "name": "Lightning Bolt",
+            "oracle_id": "test-oracle-id",
             "prices": {"usd": None},
         }
         self.mock_client.get_card_by_name.return_value = scryfall_data
@@ -184,6 +191,7 @@ class TestScryer:
         card = Card(name="Lightning Bolt")
         scryfall_data = {
             "name": "Lightning Bolt",
+            "oracle_id": "test-oracle-id",
         }
         self.mock_client.get_card_by_name.return_value = scryfall_data
 
@@ -198,6 +206,7 @@ class TestScryer:
         scryfall_data = {
             "name": "Lightning Bolt",
             "prices": {"usd": None},
+            "oracle_id": "test-oracle-id",
         }
         self.mock_client.get_card_by_name.return_value = scryfall_data
 
@@ -225,6 +234,7 @@ class TestScryer:
             if name == "Lightning Bolt":
                 return {
                     "name": "Lightning Bolt",
+                    "oracle_id": "test-oracle-id",
                     "set": "lea",
                     "prices": {"usd": "1.50"},
                     "image_uris": {"normal": "https://example.com/bolt.jpg"},
@@ -232,6 +242,7 @@ class TestScryer:
             if name == "Counterspell":
                 return {
                     "name": "Counterspell",
+                    "oracle_id": "test-oracle-id",
                     "set": "lea",
                     "prices": {"usd": "2.00"},
                     "image_uris": {"normal": "https://example.com/counter.jpg"},
@@ -271,6 +282,7 @@ class TestScryer:
 
         scryfall_data = {
             "name": "Lightning Bolt",
+            "oracle_id": "test-oracle-id",
             "set": "m10",
             "prices": {"usd": "1.00"},
         }

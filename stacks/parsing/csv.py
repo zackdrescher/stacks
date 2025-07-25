@@ -302,6 +302,8 @@ class CsvStackReader(StackReader):
         from stacks.cards.colors import Color
         from stacks.cards.scryfall_card import ScryfallCard
 
+        oracle_id = row["Oracle ID"]
+
         # Parse colors if present
         colors = None
         if "Colors" in row and row["Colors"].strip():
@@ -326,7 +328,7 @@ class CsvStackReader(StackReader):
         return [
             ScryfallCard(
                 name=card_name,
-                oracle_id=row.get("Oracle ID") or None,
+                oracle_id=oracle_id,
                 set_code=row.get("Set Code") or None,
                 collector_number=row.get("Collector Number") or None,
                 mana_cost=row.get("Mana Cost") or None,

@@ -10,7 +10,7 @@ class TestScryfallCard:
 
     def test_scryfall_card_creation_minimal(self) -> None:
         """Test creating a ScryfallCard with minimal data."""
-        card = ScryfallCard(name="Lightning Bolt")
+        card = ScryfallCard(name="Lightning Bolt", oracle_id="test-oracle-id")
 
         assert card.name == "Lightning Bolt"
         assert card.set_code is None
@@ -29,6 +29,7 @@ class TestScryfallCard:
 
         card = ScryfallCard(
             name="Lightning Bolt",
+            oracle_id="test-oracle-id",
             set_code="lea",
             collector_number="162",
             mana_cost="{R}",
@@ -53,7 +54,7 @@ class TestScryfallCard:
 
     def test_scryfall_card_inherits_from_card(self) -> None:
         """Test that ScryfallCard inherits from Card properly."""
-        card = ScryfallCard(name="Lightning Bolt")
+        card = ScryfallCard(name="Lightning Bolt", oracle_id="test-oracle-id")
 
         # Should have Card methods and properties
         assert hasattr(card, "slug")
@@ -62,18 +63,37 @@ class TestScryfallCard:
 
     def test_scryfall_card_equality_based_on_name(self) -> None:
         """Test that ScryfallCard equality is based on name like Card."""
-        card1 = ScryfallCard(name="Lightning Bolt", set_code="lea")
-        card2 = ScryfallCard(name="Lightning Bolt", set_code="m10")
-        card3 = ScryfallCard(name="Counterspell")
+        card1 = ScryfallCard(
+            name="Lightning Bolt",
+            set_code="lea",
+            oracle_id="test-oracle-id1",
+        )
+        card2 = ScryfallCard(
+            name="Lightning Bolt",
+            set_code="m10",
+            oracle_id="test-oracle-id2",
+        )
+        card3 = ScryfallCard(name="Counterspell", oracle_id="test-oracle-id1")
+        card4 = ScryfallCard(name="Counterspell", oracle_id="test-oracle-id2")
 
-        assert card1 == card2  # Same name, different set
-        assert card1 != card3  # Different name
-        assert card2 != card3  # Different name
+        assert card1 == card1
+        assert card1 != card2  # same name diff id
+
+        assert card1 == card3  # diff name same id
+        assert card1 != card4  # Different
 
     def test_scryfall_card_hashable(self) -> None:
         """Test that ScryfallCard can be hashed."""
-        card1 = ScryfallCard(name="Lightning Bolt", set_code="lea")
-        card2 = ScryfallCard(name="Lightning Bolt", set_code="m10")
+        card1 = ScryfallCard(
+            name="Lightning Bolt",
+            set_code="lea",
+            oracle_id="test-oracle-id",
+        )
+        card2 = ScryfallCard(
+            name="Lightning Bolt",
+            set_code="m10",
+            oracle_id="test-oracle-id",
+        )
 
         # Should be able to hash the cards
         hash1 = hash(card1)
@@ -86,7 +106,7 @@ class TestScryfallCard:
         """Test that ScryfallCard is immutable (frozen)."""
         from pydantic import ValidationError
 
-        card = ScryfallCard(name="Lightning Bolt")
+        card = ScryfallCard(name="Lightning Bolt", oracle_id="test-oracle-id")
 
         # Should not be able to modify attributes
         with pytest.raises(ValidationError, match="frozen"):
@@ -96,6 +116,7 @@ class TestScryfallCard:
         """Test ScryfallCard with explicitly set None values."""
         card = ScryfallCard(
             name="Lightning Bolt",
+            oracle_id="test-oracle-id",
             set_code=None,
             collector_number=None,
             mana_cost=None,
@@ -120,26 +141,46 @@ class TestScryfallCard:
 
     def test_scryfall_card_price_as_float(self) -> None:
         """Test that price_usd accepts float values."""
-        card = ScryfallCard(name="Lightning Bolt", price_usd=15.99)
+        card = ScryfallCard(
+            name="Lightning Bolt",
+            price_usd=15.99,
+            oracle_id="test-oracle-id",
+        )
         assert card.price_usd == 15.99
 
     def test_scryfall_card_price_as_zero(self) -> None:
         """Test that price_usd can be zero."""
-        card = ScryfallCard(name="Lightning Bolt", price_usd=0.0)
+        card = ScryfallCard(
+            name="Lightning Bolt",
+            price_usd=0.0,
+            oracle_id="test-oracle-id",
+        )
         assert card.price_usd == 0.0
 
     def test_scryfall_card_colors_conversion(self) -> None:
         """Test the conversion of colors to a set of Color enum values."""
         from stacks.cards.colors import Color
 
-        card = ScryfallCard(name="Lightning Bolt", colors={Color.RED, Color.BLUE})
+        card = ScryfallCard(
+            name="Lightning Bolt",
+            colors={Color.RED, Color.BLUE},
+            oracle_id="test-oracle-id",
+        )
 
         assert card.colors == {Color.RED, Color.BLUE}
 
-        card_empty = ScryfallCard(name="Lightning Bolt", colors=set())
+        card_empty = ScryfallCard(
+            name="Lightning Bolt",
+            colors=set(),
+            oracle_id="test-oracle-id",
+        )
         assert card_empty.colors == set()
 
-        card_none = ScryfallCard(name="Lightning Bolt", colors=None)
+        card_none = ScryfallCard(
+            name="Lightning Bolt",
+            colors=None,
+            oracle_id="test-oracle-id",
+        )
         assert card_none.colors is None
 
     def test_scryfall_card_colors_list_conversion(self) -> None:
@@ -147,11 +188,19 @@ class TestScryfallCard:
         from stacks.cards.colors import Color
 
         # Test conversion from list of color strings
-        card = ScryfallCard(name="Lightning Bolt", colors=["R", "U"])
+        card = ScryfallCard(
+            name="Lightning Bolt",
+            colors=["R", "U"],
+            oracle_id="test-oracle-id",
+        )
         assert card.colors == {Color.RED, Color.BLUE}
 
         # Test empty list conversion
-        card_empty = ScryfallCard(name="Lightning Bolt", colors=[])
+        card_empty = ScryfallCard(
+            name="Lightning Bolt",
+            colors=[],
+            oracle_id="test-oracle-id",
+        )
         assert card_empty.colors == set()
 
     def test_scryfall_card_csv_writing(self) -> None:
@@ -170,6 +219,7 @@ class TestScryfallCard:
             set_code="lea",
             colors={Color.RED},
             price_usd=1.50,
+            oracle_id="test-oracle-id",
         )
 
         # Convert to Print object for CSV compatibility
@@ -204,6 +254,7 @@ class TestScryfallCard:
             set_code="lea",
             colors={Color.RED, Color.BLUE},
             price_usd=1.50,
+            oracle_id="test-oracle-id",
         )
 
         # Convert using the CLI function

@@ -41,7 +41,7 @@ class Scryer:
 
         return ScryfallCard(
             name=data["name"],
-            oracle_id=data.get("oracle_id"),
+            oracle_id=data["oracle_id"],
             set_code=data.get("set"),
             collector_number=data.get("collector_number"),
             mana_cost=data.get("mana_cost"),
