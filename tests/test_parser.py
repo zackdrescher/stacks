@@ -291,11 +291,11 @@ def test_csv_stack_writer_basic_functionality() -> None:
     lines = [line.rstrip("\r") for line in lines]
 
     # Check header
-    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price,Tags"
 
     # Check data rows
-    assert "1,Lightning Bolt,LEA,,false,10.0" in lines
-    assert "1,Black Lotus,LEA,,true,5000.0" in lines
+    assert "1,Lightning Bolt,LEA,,false,10.0," in lines
+    assert "1,Black Lotus,LEA,,true,5000.0," in lines
     assert len(lines) == 3  # Header + 2 data rows
 
 
@@ -321,8 +321,8 @@ def test_csv_stack_writer_groups_duplicate_prints() -> None:
     lines = [line.rstrip("\r") for line in lines]
 
     # Check that duplicates are grouped with count
-    assert "3,Lightning Bolt,LEA,,false,10.0" in lines
-    assert "1,Black Lotus,LEA,,true,5000.0" in lines
+    assert "3,Lightning Bolt,LEA,,false,10.0," in lines
+    assert "1,Black Lotus,LEA,,true,5000.0," in lines
     assert len(lines) == 3  # Header + 2 data rows (grouped)
 
 
@@ -351,10 +351,10 @@ def test_csv_stack_writer_handles_different_properties() -> None:
     assert len(lines) == 5
 
     # Check all variations are present
-    assert "1,Lightning Bolt,LEA,,false,10.0" in lines
-    assert "1,Lightning Bolt,LEA,,true,15.0" in lines
-    assert "1,Lightning Bolt,ICE,,false,5.0" in lines
-    assert "1,Lightning Bolt,LEA,,false,12.0" in lines
+    assert "1,Lightning Bolt,LEA,,false,10.0," in lines
+    assert "1,Lightning Bolt,LEA,,true,15.0," in lines
+    assert "1,Lightning Bolt,ICE,,false,5.0," in lines
+    assert "1,Lightning Bolt,LEA,,false,12.0," in lines
 
 
 def test_csv_stack_writer_handles_none_values() -> None:
@@ -377,9 +377,9 @@ def test_csv_stack_writer_handles_none_values() -> None:
     lines = [line.rstrip("\r") for line in lines]
 
     # Check that None price is handled as empty string
-    assert "1,Lightning Bolt,LEA,,false," in lines
+    assert "1,Lightning Bolt,LEA,,false,," in lines
     # Check that empty set is handled correctly
-    assert "1,Black Lotus,,,true,5000.0" in lines
+    assert "1,Black Lotus,,,true,5000.0," in lines
 
 
 def test_csv_stack_writer_empty_stack_raises_error() -> None:
@@ -435,9 +435,9 @@ def test_write_csv_collection_content() -> None:
     # Handle Windows line endings
     lines = [line.rstrip("\r") for line in lines]
 
-    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
-    assert "1,Counterspell,ICE,,false,2.5" in lines
-    assert "1,Counterspell,ICE,,true,15.0" in lines
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price,Tags"
+    assert "1,Counterspell,ICE,,false,2.5," in lines
+    assert "1,Counterspell,ICE,,true,15.0," in lines
 
 
 def test_write_csv_collection_file(tmp_path: Path) -> None:
@@ -461,8 +461,8 @@ def test_write_csv_collection_file(tmp_path: Path) -> None:
     lines = content.strip().split("\n")
     # Handle Windows line endings
     lines = [line.rstrip("\r") for line in lines]
-    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
-    assert "2,Lightning Bolt,LEA,,false,10.0" in lines
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price,Tags"
+    assert "2,Lightning Bolt,LEA,,false,10.0," in lines
 
 
 def test_csv_round_trip() -> None:
@@ -710,3 +710,75 @@ def test_csv_print_format_with_missing_optional_columns() -> None:
     assert card.set == "Beta"
     assert card.foil is False  # Default
     assert card.price is None  # Default
+
+
+def test_csv_basic_card_with_tags() -> None:
+    """Test parsing basic cards with tags from CSV."""
+    csv_content = StringIO("""Count,Card Name,Tags
+1,Lightning Bolt,"red,burn,instant"
+2,Counterspell,"blue,control"
+1,Black Lotus,
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    # Should have 4 cards total (1 + 2 + 1)
+    assert len(cards) == 4
+
+    # Check Lightning Bolt has the correct tags
+    lightning_bolts = [card for card in cards if card.name == "Lightning Bolt"]
+    assert len(lightning_bolts) == 1
+    assert lightning_bolts[0].tags == ["red", "burn", "instant"]
+
+    # Check Counterspell has the correct tags
+    counterspells = [card for card in cards if card.name == "Counterspell"]
+    assert len(counterspells) == 2
+    assert all(card.tags == ["blue", "control"] for card in counterspells)
+
+    # Check Black Lotus has no tags
+    black_lotus = [card for card in cards if card.name == "Black Lotus"]
+    assert len(black_lotus) == 1
+    assert black_lotus[0].tags == []
+
+
+def test_csv_print_with_tags() -> None:
+    """Test parsing Print cards with tags from CSV."""
+    csv_content = StringIO("""Count,Card Name,Set Name,Foil,Price,Tags
+1,Lightning Bolt,Beta,false,100.00,"red,expensive"
+2,Counterspell,Alpha,true,50.25,"blue,control,vintage"
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    cards = list(stack)
+
+    assert len(cards) == 3
+    assert all(isinstance(card, Print) for card in cards)
+
+    lightning_bolt = next(card for card in cards if card.name == "Lightning Bolt")
+    assert lightning_bolt.tags == ["red", "expensive"]
+    assert lightning_bolt.set == "Beta"
+
+    counterspells = [card for card in cards if card.name == "Counterspell"]
+    assert len(counterspells) == 2
+    assert all(card.tags == ["blue", "control", "vintage"] for card in counterspells)
+
+
+def test_tags_parsing_edge_cases() -> None:
+    """Test edge cases in tag parsing."""
+    from stacks.parsing.csv import CsvStackReader
+
+    reader = CsvStackReader()
+
+    # Test empty tags
+    assert reader._parse_tags("") == []
+    assert reader._parse_tags("   ") == []
+
+    # Test single tag
+    assert reader._parse_tags("red") == ["red"]
+
+    # Test tags with extra whitespace
+    assert reader._parse_tags("red , blue , green") == ["red", "blue", "green"]
+
+    # Test tags with empty elements
+    assert reader._parse_tags("red,,blue") == ["red", "blue"]

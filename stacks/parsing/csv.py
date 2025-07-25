@@ -244,6 +244,13 @@ class CsvStackReader(StackReader):
             msg = f"Invalid {field_name} '{value}' at row {row_num}"
             raise ValueError(msg) from exc
 
+    def _parse_tags(self, tags_str: str) -> list[str]:
+        """Parse tags from a comma-separated string."""
+        if not tags_str.strip():
+            return []
+        # Split by comma and strip whitespace from each tag
+        return [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+
     def _parse_csv_row(
         self,
         row: dict[str, str],
@@ -261,7 +268,13 @@ class CsvStackReader(StackReader):
             return self._create_scryfall_cards(row, card_name, count, row_num)
         if card_type == "print":
             return self._create_print_cards(row, card_name, count, row_num)
-        return self._create_basic_cards(card_name, count)
+
+        # For basic cards, parse tags if present
+        tags = []
+        if "Tags" in row:
+            tags = self._parse_tags(row["Tags"])
+
+        return self._create_basic_cards(card_name, count, tags)
 
     def _create_scryfall_cards(
         self,
@@ -289,6 +302,11 @@ class CsvStackReader(StackReader):
         if "Price USD" in row and row["Price USD"].strip():
             price_usd = self._safe_float(row["Price USD"], "price", row_num)
 
+        # Parse tags if present
+        tags = []
+        if "Tags" in row:
+            tags = self._parse_tags(row["Tags"])
+
         # Create the specified number of card copies
         return [
             ScryfallCard(
@@ -303,6 +321,7 @@ class CsvStackReader(StackReader):
                 price_usd=price_usd,
                 image_url=row.get("Image URL") or None,
                 colors=colors,
+                tags=tags,
             )
             for _ in range(count)
         ]
@@ -323,6 +342,11 @@ class CsvStackReader(StackReader):
         if "Price" in row and row["Price"].strip():
             price = self._safe_float(row["Price"], "price", row_num)
 
+        # Parse tags if present
+        tags = []
+        if "Tags" in row:
+            tags = self._parse_tags(row["Tags"])
+
         # Create the specified number of print copies
         return [
             Print(
@@ -330,15 +354,24 @@ class CsvStackReader(StackReader):
                 set=set_name,
                 foil=foil,
                 price=price,
+                tags=tags,
             )
             for _ in range(count)
         ]
 
-    def _create_basic_cards(self, card_name: str, count: int) -> list[Any]:
+    def _create_basic_cards(
+        self,
+        card_name: str,
+        count: int,
+        tags: list[str] | None = None,
+    ) -> list[Any]:
         """Create basic Card objects."""
         from stacks.cards.card import Card
 
-        return [Card(name=card_name) for _ in range(count)]
+        if tags is None:
+            tags = []
+
+        return [Card(name=card_name, tags=tags) for _ in range(count)]
 
 
 @register_writer("csv")
@@ -371,12 +404,16 @@ class CsvStackWriter(StackWriter[Print]):
             "Collector Number",
             "Foil",
             "Price",
+            "Tags",
         ]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
 
         # Write each group as a row
         for print_item, count in print_groups.items():
+            # Format tags as comma-separated string
+            tags_str = ",".join(print_item.tags) if print_item.tags else ""
+
             row = {
                 "Count": count,
                 "Card Name": print_item.name,
@@ -384,6 +421,7 @@ class CsvStackWriter(StackWriter[Print]):
                 "Collector Number": "",  # Not available in Print model
                 "Foil": str(print_item.foil).lower(),
                 "Price": print_item.price if print_item.price is not None else "",
+                "Tags": tags_str,
             }
             writer.writerow(row)
 
@@ -401,12 +439,13 @@ class CsvStackWriter(StackWriter[Print]):
         print_objects: dict[tuple, Print] = {}
 
         for print_item in stack:
-            # Create a key based on print properties
+            # Create a key based on print properties, including tags
             key = (
                 print_item.name,
                 print_item.set,
                 print_item.foil,
                 print_item.price,
+                tuple(print_item.tags) if print_item.tags else (),
             )
 
             print_counts[key] = print_counts.get(key, 0) + 1
@@ -452,6 +491,7 @@ class ScryfallCsvStackWriter(StackWriter):
             "Colors",
             "Oracle ID",
             "Image URL",
+            "Tags",
         ]
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
@@ -461,6 +501,11 @@ class ScryfallCsvStackWriter(StackWriter):
             colors_str = ""
             if hasattr(card_item, "colors") and card_item.colors:
                 colors_str = ",".join(sorted(color.value for color in card_item.colors))
+
+            # Format tags as comma-separated string
+            tags_str = ""
+            if hasattr(card_item, "tags") and card_item.tags:
+                tags_str = ",".join(card_item.tags)
 
             row = {
                 "Count": count,
@@ -475,6 +520,7 @@ class ScryfallCsvStackWriter(StackWriter):
                 "Colors": colors_str,
                 "Oracle ID": getattr(card_item, "oracle_id", None) or "",
                 "Image URL": getattr(card_item, "image_url", None) or "",
+                "Tags": tags_str,
             }
             writer.writerow(row)
 
@@ -497,12 +543,18 @@ class ScryfallCsvStackWriter(StackWriter):
             if hasattr(card_item, "colors") and card_item.colors:
                 colors_key = tuple(sorted(color.value for color in card_item.colors))
 
+            # Include tags in the grouping key
+            tags_key = ()
+            if hasattr(card_item, "tags") and card_item.tags:
+                tags_key = tuple(card_item.tags)
+
             key = (
                 card_item.name,
                 getattr(card_item, "set_code", None),
                 getattr(card_item, "collector_number", None),
                 getattr(card_item, "price_usd", None),
                 colors_key,
+                tags_key,
             )
 
             card_counts[key] = card_counts.get(key, 0) + 1

@@ -150,7 +150,7 @@ class TestCard:
         """Test serializing a card to a dictionary."""
         card = Card(name="Lightning Bolt")
         data = card.model_dump()
-        assert data == {"name": "Lightning Bolt", "slug": "lightning-bolt"}
+        assert data == {"name": "Lightning Bolt", "slug": "lightning-bolt", "tags": []}
 
     def test_card_model_validate(self) -> None:
         """Test creating a card from a dictionary."""
@@ -207,7 +207,7 @@ class TestCard:
         """Test that slug is included when dumping the model."""
         card = Card(name="Lightning Bolt")
         data = card.model_dump()
-        expected = {"name": "Lightning Bolt", "slug": "lightning-bolt"}
+        expected = {"name": "Lightning Bolt", "slug": "lightning-bolt", "tags": []}
         assert data == expected
 
     def test_card_immutability_comprehensive(self) -> None:

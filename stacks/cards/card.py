@@ -10,6 +10,7 @@ class Card(BaseModel):
     model_config = {"frozen": True}
 
     name: str
+    tags: list[str] = []
 
     def identity(self) -> tuple:
         """Get a tuple representing the card's identity."""
