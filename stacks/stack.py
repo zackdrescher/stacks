@@ -107,7 +107,7 @@ class Stack(Generic[T]):
             int: The number of elements contained in the stack.
 
         """
-        return len(list(self))
+        return sum(len(copies) for copies in self._cards.values())
 
     def __iter__(self) -> Iterator[T]:
         """Iterate over all copies of cards.
