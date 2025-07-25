@@ -11,7 +11,7 @@ class Print(Card):
     foil: bool = False
     condition: str | None = None
     language: str = "en"
-    collector_number: int | None = None
+    collector_number: str | None = None
     price: float | None = None
 
     def identity(self) -> tuple:

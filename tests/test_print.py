@@ -28,7 +28,7 @@ class TestPrint:
             foil=True,
             condition="NM",
             language="jp",
-            collector_number=209,
+            collector_number="209",
             price=25.99,
         )
         assert print_card.name == "Lightning Bolt"
@@ -36,7 +36,7 @@ class TestPrint:
         assert print_card.foil is True
         assert print_card.condition == "NM"
         assert print_card.language == "jp"
-        assert print_card.collector_number == 209
+        assert print_card.collector_number == "209"
         assert print_card.price == 25.99
 
     def test_print_inherits_from_card(self) -> None:
@@ -88,7 +88,7 @@ class TestPrint:
             foil=True,
             condition="NM",
             language="jp",
-            collector_number=209,
+            collector_number="209",
             price=25.99,
         )
         print2 = Print(
@@ -97,7 +97,7 @@ class TestPrint:
             foil=True,
             condition="NM",
             language="jp",
-            collector_number=209,
+            collector_number="209",
             price=25.99,
         )
         assert print1 == print2
@@ -116,8 +116,8 @@ class TestPrint:
 
     def test_print_inequality_different_multiverse_id(self) -> None:
         """Test that prints with different multiverse IDs are not equal."""
-        print1 = Print(name="Lightning Bolt", set="LEA", collector_number=209)
-        print2 = Print(name="Lightning Bolt", set="LEA", collector_number=210)
+        print1 = Print(name="Lightning Bolt", set="LEA", collector_number="209")
+        print2 = Print(name="Lightning Bolt", set="LEA", collector_number="210")
         assert print1 != print2
 
     def test_print_equality_with_none_values(self) -> None:
@@ -137,7 +137,7 @@ class TestPrint:
             foil=True,
             condition="NM",
             language="jp",
-            collector_number=209,
+            collector_number="209",
             price=25.99,
         )
         identity = print_card.identity()
@@ -147,7 +147,7 @@ class TestPrint:
             True,
             "NM",
             "jp",
-            209,
+            "209",
             25.99,
         )
         assert identity == expected_identity
@@ -255,7 +255,7 @@ class TestPrint:
             "foil": True,
             "condition": "NM",
             "language": "jp",
-            "collector_number": 209,
+            "collector_number": "209",
             "price": 25.99,
         }
         print_card = Print.model_validate(data)
@@ -264,7 +264,7 @@ class TestPrint:
         assert print_card.foil is True
         assert print_card.condition == "NM"
         assert print_card.language == "jp"
-        assert print_card.collector_number == 209
+        assert print_card.collector_number == "209"
         assert print_card.price == 25.99
 
     def test_print_with_unicode_set_name(self) -> None:

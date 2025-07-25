@@ -367,11 +367,7 @@ class CsvStackReader(StackReader):
         # Parse collector number if present
         collector_number = None
         if "Collector Number" in row and row["Collector Number"].strip():
-            collector_number = self._safe_int_optional(
-                row["Collector Number"],
-                "collector_number",
-                row_num,
-            )
+            collector_number = row["Collector Number"].strip()
 
         # Create the specified number of print copies
         return [

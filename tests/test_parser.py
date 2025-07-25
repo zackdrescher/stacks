@@ -195,21 +195,21 @@ def test_parse_csv_collection_content() -> None:
         set="Beta",
         foil=False,
         price=100.00,
-        collector_number=1,
+        collector_number="1",
     )
     counterspell = Print(
         name="Counterspell",
         set="Alpha",
         foil=True,
         price=50.25,
-        collector_number=2,
+        collector_number="2",
     )
     black_lotus = Print(
         name="Black Lotus",
         set="Alpha",
         foil=False,
         price=5000.00,
-        collector_number=3,
+        collector_number="3",
     )
 
     assert stack.count(lightning_bolt) == 1
