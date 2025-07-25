@@ -234,6 +234,21 @@ class CsvStackReader(StackReader):
             msg = f"Invalid {field_name} '{value}' at row {row_num}"
             raise ValueError(msg) from exc
 
+    def _safe_int_optional(
+        self,
+        value: str,
+        field_name: str,
+        row_num: int,
+    ) -> int | None:
+        """Safely convert string to int, returning None for empty strings."""
+        if not value.strip():
+            return None
+        try:
+            return int(value)
+        except ValueError as exc:
+            msg = f"Invalid {field_name} '{value}' at row {row_num}"
+            raise ValueError(msg) from exc
+
     def _safe_float(self, value: str, field_name: str, row_num: int) -> float | None:
         """Safely convert string to float with error context."""
         if not value.strip():
@@ -347,6 +362,15 @@ class CsvStackReader(StackReader):
         if "Tags" in row:
             tags = self._parse_tags(row["Tags"])
 
+        # Parse collector number if present
+        collector_number = None
+        if "Collector Number" in row and row["Collector Number"].strip():
+            collector_number = self._safe_int_optional(
+                row["Collector Number"],
+                "collector_number",
+                row_num,
+            )
+
         # Create the specified number of print copies
         return [
             Print(
@@ -354,6 +378,7 @@ class CsvStackReader(StackReader):
                 set=set_name,
                 foil=foil,
                 price=price,
+                collector_number=collector_number,
                 tags=tags,
             )
             for _ in range(count)
@@ -439,12 +464,15 @@ class CsvStackWriter(StackWriter[Print]):
         print_objects: dict[tuple, Print] = {}
 
         for print_item in stack:
-            # Create a key based on print properties, including tags
+            # Create a key based on print properties, including all identity fields
             key = (
                 print_item.name,
                 print_item.set,
                 print_item.foil,
                 print_item.price,
+                print_item.condition,
+                print_item.language,
+                print_item.collector_number,
                 tuple(print_item.tags) if print_item.tags else (),
             )
 

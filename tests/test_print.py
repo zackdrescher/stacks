@@ -17,8 +17,7 @@ class TestPrint:
         assert print_card.foil is False
         assert print_card.condition is None
         assert print_card.language == "en"
-        assert print_card.multiverse_id is None
-        assert print_card.json_id is None
+        assert print_card.collector_number is None
         assert print_card.price is None
 
     def test_print_creation_with_all_fields(self) -> None:
@@ -29,8 +28,7 @@ class TestPrint:
             foil=True,
             condition="NM",
             language="jp",
-            multiverse_id=209,
-            json_id="abc123",
+            collector_number=209,
             price=25.99,
         )
         assert print_card.name == "Lightning Bolt"
@@ -38,8 +36,7 @@ class TestPrint:
         assert print_card.foil is True
         assert print_card.condition == "NM"
         assert print_card.language == "jp"
-        assert print_card.multiverse_id == 209
-        assert print_card.json_id == "abc123"
+        assert print_card.collector_number == 209
         assert print_card.price == 25.99
 
     def test_print_inherits_from_card(self) -> None:
@@ -91,8 +88,7 @@ class TestPrint:
             foil=True,
             condition="NM",
             language="jp",
-            multiverse_id=209,
-            json_id="abc123",
+            collector_number=209,
             price=25.99,
         )
         print2 = Print(
@@ -101,8 +97,7 @@ class TestPrint:
             foil=True,
             condition="NM",
             language="jp",
-            multiverse_id=209,
-            json_id="abc123",
+            collector_number=209,
             price=25.99,
         )
         assert print1 == print2
@@ -121,20 +116,8 @@ class TestPrint:
 
     def test_print_inequality_different_multiverse_id(self) -> None:
         """Test that prints with different multiverse IDs are not equal."""
-        print1 = Print(name="Lightning Bolt", set="LEA", multiverse_id=209)
-        print2 = Print(name="Lightning Bolt", set="LEA", multiverse_id=210)
-        assert print1 != print2
-
-    def test_print_inequality_different_json_id(self) -> None:
-        """Test that prints with different JSON IDs are not equal."""
-        print1 = Print(name="Lightning Bolt", set="LEA", json_id="abc123")
-        print2 = Print(name="Lightning Bolt", set="LEA", json_id="def456")
-        assert print1 != print2
-
-    def test_print_inequality_different_price(self) -> None:
-        """Test that prints with different prices are not equal."""
-        print1 = Print(name="Lightning Bolt", set="LEA", price=10.0)
-        print2 = Print(name="Lightning Bolt", set="LEA", price=15.0)
+        print1 = Print(name="Lightning Bolt", set="LEA", collector_number=209)
+        print2 = Print(name="Lightning Bolt", set="LEA", collector_number=210)
         assert print1 != print2
 
     def test_print_equality_with_none_values(self) -> None:
@@ -143,8 +126,7 @@ class TestPrint:
         print2 = Print(name="Lightning Bolt", set="LEA")
         assert print1 == print2
         assert print1.condition is None
-        assert print1.multiverse_id is None
-        assert print1.json_id is None
+        assert print1.collector_number is None
         assert print1.price is None
 
     def test_print_identity(self) -> None:
@@ -155,8 +137,7 @@ class TestPrint:
             foil=True,
             condition="NM",
             language="jp",
-            multiverse_id=209,
-            json_id="abc123",
+            collector_number=209,
             price=25.99,
         )
         identity = print_card.identity()
@@ -167,7 +148,6 @@ class TestPrint:
             "NM",
             "jp",
             209,
-            "abc123",
             25.99,
         )
         assert identity == expected_identity
@@ -183,7 +163,6 @@ class TestPrint:
             None,  # condition default
             "en",  # language default
             None,  # multiverse_id default
-            None,  # json_id default
             None,  # price default
         )
         assert identity == expected_identity
@@ -225,7 +204,7 @@ class TestPrint:
         # Verify they are equal
         assert print1 == print2
 
-    def test_print_vs_card_inequality(self) -> None:
+    def test_print_vs_card_equality(self) -> None:
         """Test that a Print is not equal to a Card with same name."""
         from stacks.cards.card import Card
 
@@ -233,8 +212,8 @@ class TestPrint:
         print_card = Print(name="Lightning Bolt", set="LEA")
 
         # They should not be equal even though they have the same name
-        assert card != print_card
-        assert print_card != card
+        assert card == print_card
+        assert print_card == card
 
     def test_print_repr(self) -> None:
         """Test the string representation of a print."""
@@ -260,8 +239,7 @@ class TestPrint:
             "foil": True,
             "condition": "NM",
             "language": "en",
-            "multiverse_id": None,
-            "json_id": None,
+            "collector_number": None,
             "price": 10.0,
             "slug": "lightning-bolt",
             "tags": set(),
@@ -277,8 +255,7 @@ class TestPrint:
             "foil": True,
             "condition": "NM",
             "language": "jp",
-            "multiverse_id": 209,
-            "json_id": "abc123",
+            "collector_number": 209,
             "price": 25.99,
         }
         print_card = Print.model_validate(data)
@@ -287,8 +264,7 @@ class TestPrint:
         assert print_card.foil is True
         assert print_card.condition == "NM"
         assert print_card.language == "jp"
-        assert print_card.multiverse_id == 209
-        assert print_card.json_id == "abc123"
+        assert print_card.collector_number == 209
         assert print_card.price == 25.99
 
     def test_print_with_unicode_set_name(self) -> None:

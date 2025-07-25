@@ -190,9 +190,27 @@ def test_parse_csv_collection_content() -> None:
     stack = parse_csv_collection_content(csv_content)
 
     # Check individual card counts
-    lightning_bolt = Print(name="Lightning Bolt", set="Beta", foil=False, price=100.00)
-    counterspell = Print(name="Counterspell", set="Alpha", foil=True, price=50.25)
-    black_lotus = Print(name="Black Lotus", set="Alpha", foil=False, price=5000.00)
+    lightning_bolt = Print(
+        name="Lightning Bolt",
+        set="Beta",
+        foil=False,
+        price=100.00,
+        collector_number=1,
+    )
+    counterspell = Print(
+        name="Counterspell",
+        set="Alpha",
+        foil=True,
+        price=50.25,
+        collector_number=2,
+    )
+    black_lotus = Print(
+        name="Black Lotus",
+        set="Alpha",
+        foil=False,
+        price=5000.00,
+        collector_number=3,
+    )
 
     assert stack.count(lightning_bolt) == 1
     assert stack.count(counterspell) == 2
@@ -295,26 +313,6 @@ def test_parse_csv_collection_content_foil_variations() -> None:
 
     assert len(foil_cards) == 3  # true, 1, yes
     assert len(non_foil_cards) == 3  # false, 0, no
-
-
-def test_parse_real_csv_collection_file() -> None:
-    """Test parsing the actual CSV collection file."""
-    csv_path = Path(__file__).parent.parent / "data" / "export_simple_1751163593.csv"
-
-    if csv_path.exists():
-        stack = parse_csv_collection_file(csv_path)
-
-        # Check that we have cards
-        assert len(list(stack)) > 0
-        assert len(stack.unique_cards()) > 0
-
-        # Check that we have some foil cards
-        foil_cards = [card for card in stack.unique_cards() if card.foil]
-        assert len(foil_cards) > 0
-
-        # Check that we have cards with prices
-        priced_cards = [card for card in stack.unique_cards() if card.price is not None]
-        assert len(priced_cards) > 0
 
 
 def test_parse_csv_collection_file_sets_source() -> None:

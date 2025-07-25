@@ -21,7 +21,7 @@ def sample_print() -> Print:
         foil=False,
         condition="NM",
         language="en",
-        multiverse_id=209,
+        collector_number=209,
         json_id="abc123",
         price=15.99,
     )

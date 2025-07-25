@@ -322,8 +322,9 @@ class TestStack:
         card = Card(name="Lightning Bolt")
         print_card = Print(name="Lightning Bolt", set="LEA")
 
-        # They should not be equal
-        assert card != print_card
+        # They should be equal
+        assert card == print_card
+        # but have different identities
         assert card.identity() != print_card.identity()
 
         # This would require a mixed stack, but the type system prevents it

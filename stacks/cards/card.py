@@ -29,7 +29,7 @@ class Card(BaseModel):
         """Cards are equal if they have the same name."""
         if not isinstance(other, Card):
             return False
-        return self.identity() == other.identity()
+        return self.slug == other.slug
 
     @computed_field
     def slug(self) -> str:
