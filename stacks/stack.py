@@ -71,6 +71,26 @@ class Stack(Generic[T]):
         """
         return any(existing_card == card for existing_card in self._cards)
 
+    def match(self, quary_card: T) -> Stack:
+        """Return a new Stack containing all cards in the current stack that equal the given query card.
+
+        Args:
+            quary_card (T): The card to match against the unique cards in the stack.
+
+        Returns:
+            Stack: A new Stack containing all cards equal to `quary_card`.
+
+        """
+        stack: Stack[T] = Stack()
+
+        for card in self.unique_cards():
+            if quary_card == card:
+                # Add all copies of the matching card
+                for copy in self._cards[card]:
+                    stack.add(copy)
+
+        return stack
+
     def unique_cards(self) -> list[T]:
         """Get a list of unique cards in the stack.
 

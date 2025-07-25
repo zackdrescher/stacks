@@ -960,3 +960,165 @@ class TestStack:
         # Same stack object should now have tagged cards
         tagged_card = next(iter(stack))
         assert tagged_card.tags == {"test"}
+
+    def test_match_empty_stack(self) -> None:
+        """Test match method on empty stack."""
+        stack: Stack[Card] = Stack()
+        query_card = Card(name="Lightning Bolt")
+
+        result = stack.match(query_card)
+
+        assert list(result) == []
+        assert result.unique_cards() == []
+
+    def test_match_no_matching_cards(self) -> None:
+        """Test match method when no cards match the query."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        query_card = Card(name="Giant Growth")
+
+        stack.add(card1)
+        stack.add(card2)
+
+        result = stack.match(query_card)
+
+        assert list(result) == []
+        assert result.unique_cards() == []
+
+    def test_match_single_matching_card(self) -> None:
+        """Test match method with a single matching card."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        query_card = Card(name="Lightning Bolt")
+
+        stack.add(card1)
+        stack.add(card2)
+
+        result = stack.match(query_card)
+
+        assert len(list(result)) == 1
+        assert len(result.unique_cards()) == 1
+        assert card1 in result.unique_cards()
+        assert result.count(card1) == 1
+
+    def test_match_multiple_copies_of_matching_card(self) -> None:
+        """Test match method when multiple copies of a card match."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        query_card = Card(name="Lightning Bolt")
+
+        # Add multiple copies of card1
+        for _ in range(3):
+            stack.add(card1)
+        stack.add(card2)
+
+        result = stack.match(query_card)
+
+        assert len(list(result)) == 3
+        assert len(result.unique_cards()) == 1
+        assert card1 in result.unique_cards()
+        assert result.count(card1) == 3
+
+    def test_match_card_equality_vs_identity(self) -> None:
+        """Test that match uses card equality, not identity."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        # Create a different instance with same attributes
+        query_card = Card(name="Lightning Bolt")
+
+        stack.add(card1)
+
+        result = stack.match(query_card)
+
+        # Should match because cards are equal, even if not the same object
+        assert len(list(result)) == 1
+        assert card1 in result.unique_cards()
+        assert result.count(card1) == 1
+
+    def test_match_with_different_card_types(self) -> None:
+        """Test match method with different card types."""
+        from stacks.cards.print import Print
+
+        stack: Stack[Print] = Stack()
+        print1 = Print(
+            name="Lightning Bolt",
+            set="LEA",
+            foil=False,
+            condition="NM",
+            language="en",
+        )
+        print2 = Print(
+            name="Counterspell",
+            set="LEA",
+            foil=False,
+            condition="NM",
+            language="en",
+        )
+        query_print = Print(
+            name="Lightning Bolt",
+            set="LEA",
+            foil=False,
+            condition="NM",
+            language="en",
+        )
+
+        stack.add(print1)
+        stack.add(print2)
+
+        result = stack.match(query_print)
+
+        assert len(list(result)) == 1
+        assert print1 in result.unique_cards()
+
+    def test_match_preserves_original_stack(self) -> None:
+        """Test that match doesn't modify the original stack."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        query_card = Card(name="Lightning Bolt")
+
+        stack.add(card1)
+        stack.add(card2)
+
+        original_count = len(list(stack))
+        original_unique_count = len(stack.unique_cards())
+
+        stack.match(query_card)
+
+        # Original stack should be unchanged
+        assert len(list(stack)) == original_count
+        assert len(stack.unique_cards()) == original_unique_count
+        assert stack.count(card1) == 1
+        assert stack.count(card2) == 1
+
+    def test_match_returns_new_stack_instance(self) -> None:
+        """Test that match returns a new Stack instance."""
+        stack: Stack[Card] = Stack()
+        card = Card(name="Lightning Bolt")
+        query_card = Card(name="Lightning Bolt")
+
+        stack.add(card)
+
+        result = stack.match(query_card)
+
+        # Should be different objects
+        assert result is not stack
+        assert isinstance(result, Stack)
+
+    def test_match_with_cards_having_tags(self) -> None:
+        """Test match method with cards that have tags."""
+        stack: Stack[Card] = Stack()
+        card1 = Card(name="Lightning Bolt", tags={"red", "instant"})
+        card2 = Card(name="Lightning Bolt", tags={"vintage"})
+        query_card = Card(name="Lightning Bolt", tags={"red", "instant"})
+
+        stack.add(card1)
+        stack.add(card2)
+
+        result = stack.match(query_card)
+
+        assert len(list(result)) == 2
+        assert len(result.unique_cards()) == 1
