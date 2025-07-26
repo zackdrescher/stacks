@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tqdm import tqdm
+
 if TYPE_CHECKING:
     from stacks.cards.card import Card
     from stacks.scryfall.client import ScryfallClient
@@ -72,9 +74,11 @@ class Scryer:
 
         enriched_stack: Stack[ScryfallCard] = Stack()
 
-        for card in cards:
+        for card in tqdm(cards.unique_cards()):
+            count = cards.count(card)
             enriched_card = self.enrich(card, set_code)
             if enriched_card:
-                enriched_stack.add(enriched_card)
+                for i in range(count):
+                    enriched_stack.add(enriched_card)
 
         return enriched_stack
