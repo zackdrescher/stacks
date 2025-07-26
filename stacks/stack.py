@@ -168,6 +168,39 @@ class Stack(Generic[T]):
             result.add(card)
         return result
 
+    def split_on_overlap(self, other: Stack) -> tuple[Stack, Stack]:
+        """Split the current stack into two stacks based on overlap with another stack.
+
+        The method returns a tuple containing:
+        - The intersection stack: contains cards that are present in both stacks, with
+        the count being the minimum of the counts in each stack.
+        - The difference stack: contains cards that are present in the current stack but
+        not in the other stack, with the count being the excess in the current stack over
+        the other.
+
+        Args:
+            other (Stack): The stack to compare against.
+
+        Returns:
+            tuple[Stack, Stack]: A tuple of (intersection_stack, difference_stack).
+
+        """
+        intersect: Stack = Stack()
+        difference: Stack = Stack()
+
+        for card in self.unique_cards():
+            other_matches = other.count(card)
+            # difference
+            diff_count = self.count(card) - other_matches
+            if diff_count > 0:
+                difference._cards[card] = self._cards[card][:diff_count]
+
+            # intersect
+            min_adds = min(other_matches, self.count(card))
+            intersect._cards[card] = self._cards[card][:min_adds]
+
+        return intersect, difference
+
     def add_tag(self, tag: str) -> None:
         """Add the specified tag to all cards in the stack in place.
 

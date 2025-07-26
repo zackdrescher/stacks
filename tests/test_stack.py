@@ -1122,3 +1122,239 @@ class TestStack:
 
         assert len(list(result)) == 2
         assert len(result.unique_cards()) == 1
+
+
+class TestStackSplitOnOverlap:
+    """Test cases for the Stack.split_on_overlap method."""
+
+    def test_split_on_overlap_empty_stacks(self) -> None:
+        """Test split_on_overlap with two empty stacks."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        assert len(list(intersect)) == 0
+        assert len(list(difference)) == 0
+        assert intersect.unique_cards() == []
+        assert difference.unique_cards() == []
+
+    def test_split_on_overlap_empty_with_nonempty(self) -> None:
+        """Test split_on_overlap with empty stack and non-empty stack."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card = Card(name="Lightning Bolt")
+        stack2.add(card)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        assert len(list(intersect)) == 0
+        assert len(list(difference)) == 0
+        assert intersect.unique_cards() == []
+        assert difference.unique_cards() == []
+
+    def test_split_on_overlap_nonempty_with_empty(self) -> None:
+        """Test split_on_overlap with non-empty stack and empty stack."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card = Card(name="Lightning Bolt")
+        stack1.add(card)
+        stack1.add(card)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        assert len(list(intersect)) == 0
+        assert len(list(difference)) == 2
+        assert difference.count(card) == 2
+        assert card in difference.unique_cards()
+
+    def test_split_on_overlap_no_common_cards(self) -> None:
+        """Test split_on_overlap with stacks having no common cards."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+
+        stack1.add(card1)
+        stack1.add(card1)
+        stack2.add(card2)
+        stack2.add(card2)
+        stack2.add(card2)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        assert len(list(intersect)) == 0
+        assert len(list(difference)) == 2
+        assert difference.count(card1) == 2
+        assert card1 in difference.unique_cards()
+        assert card2 not in difference.unique_cards()
+
+    def test_split_on_overlap_identical_stacks(self) -> None:
+        """Test split_on_overlap with identical stacks."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+
+        # Add same cards to both stacks
+        for card in [card1, card1, card2]:
+            stack1.add(card)
+            stack2.add(card)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        assert len(list(intersect)) == 3
+        assert len(list(difference)) == 0
+        assert intersect.count(card1) == 2
+        assert intersect.count(card2) == 1
+        assert difference.unique_cards() == []
+
+    def test_split_on_overlap_different_counts_same_cards(self) -> None:
+        """Test split_on_overlap when stacks have different counts of same cards."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card = Card(name="Lightning Bolt")
+
+        # Stack1 has 5 copies, Stack2 has 3 copies
+        for _ in range(5):
+            stack1.add(card)
+        for _ in range(3):
+            stack2.add(card)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        assert len(list(intersect)) == 3  # min(5, 3) = 3
+        assert len(list(difference)) == 2  # 5 - 3 = 2
+        assert intersect.count(card) == 3
+        assert difference.count(card) == 2
+
+    def test_split_on_overlap_partial_overlap(self) -> None:
+        """Test split_on_overlap with partial overlap between stacks."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+        card3 = Card(name="Giant Growth")
+
+        # Stack1: 3x Lightning Bolt, 2x Counterspell
+        for _ in range(3):
+            stack1.add(card1)
+        for _ in range(2):
+            stack1.add(card2)
+
+        # Stack2: 2x Lightning Bolt, 3x Giant Growth
+        for _ in range(2):
+            stack2.add(card1)
+        for _ in range(3):
+            stack2.add(card3)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        # Intersection: min(3,2)=2 Lightning Bolt, min(2,0)=0 Counterspell
+        assert len(list(intersect)) == 2
+        assert intersect.count(card1) == 2
+        assert intersect.count(card2) == 0
+        assert intersect.count(card3) == 0
+
+        # Difference: (3-2)=1 Lightning Bolt, (2-0)=2 Counterspell
+        assert len(list(difference)) == 3
+        assert difference.count(card1) == 1
+        assert difference.count(card2) == 2
+        assert difference.count(card3) == 0
+
+    def test_split_on_overlap_stack1_subset_of_stack2(self) -> None:
+        """Test split_on_overlap when stack1 is a subset of stack2."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+
+        # Stack1: 1x Lightning Bolt
+        stack1.add(card1)
+
+        # Stack2: 3x Lightning Bolt, 2x Counterspell
+        for _ in range(3):
+            stack2.add(card1)
+        for _ in range(2):
+            stack2.add(card2)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        # Intersection: min(1,3)=1 Lightning Bolt
+        assert len(list(intersect)) == 1
+        assert intersect.count(card1) == 1
+        assert intersect.count(card2) == 0
+
+        # Difference: (1-3)=0 Lightning Bolt (no negative counts)
+        assert len(list(difference)) == 0
+        assert difference.unique_cards() == []
+
+    def test_split_on_overlap_return_types(self) -> None:
+        """Test that split_on_overlap returns the correct types."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card = Card(name="Lightning Bolt")
+        stack1.add(card)
+
+        result = stack1.split_on_overlap(stack2)
+
+        assert isinstance(result, tuple)
+        assert len(result) == 2
+        intersect, difference = result
+        assert isinstance(intersect, Stack)
+        assert isinstance(difference, Stack)
+
+    def test_split_on_overlap_immutability(self) -> None:
+        """Test that split_on_overlap doesn't modify the original stacks."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        card1 = Card(name="Lightning Bolt")
+        card2 = Card(name="Counterspell")
+
+        stack1.add(card1)
+        stack1.add(card2)
+        stack2.add(card1)
+
+        # Store original state
+        original_stack1_count = len(list(stack1))
+        original_stack2_count = len(list(stack2))
+        original_stack1_card1_count = stack1.count(card1)
+        original_stack1_card2_count = stack1.count(card2)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        # Verify original stacks are unchanged
+        assert len(list(stack1)) == original_stack1_count
+        assert len(list(stack2)) == original_stack2_count
+        assert stack1.count(card1) == original_stack1_card1_count
+        assert stack1.count(card2) == original_stack1_card2_count
+
+    def test_split_on_overlap_with_fixture_cards(self, sample_card: Card) -> None:
+        """Test split_on_overlap using fixture cards."""
+        stack1: Stack[Card] = Stack()
+        stack2: Stack[Card] = Stack()
+
+        other_card = Card(name="Counterspell")
+
+        # Add different amounts of the same card
+        for _ in range(4):
+            stack1.add(sample_card)
+        for _ in range(2):
+            stack2.add(sample_card)
+
+        stack1.add(other_card)
+
+        intersect, difference = stack1.split_on_overlap(stack2)
+
+        assert intersect.count(sample_card) == 2  # min(4, 2)
+        assert difference.count(sample_card) == 2  # 4 - 2
+        assert difference.count(other_card) == 1  # 1 - 0
