@@ -245,6 +245,24 @@ class Stack(Generic[T]):
 
         return "Stack(\n  " + "\n  ".join(lines) + "\n)"
 
+    def __getitem__(self, key: T) -> list[T]:
+        """Get the list of card copies for a given card key.
+
+        Args:
+            key: The card to use as a key to retrieve its copies.
+
+        Returns:
+            A list of card copies for the given key.
+
+        Raises:
+            KeyError: If the key is not found in the stack.
+
+        """
+        if key not in self._cards:
+            msg = f"Card {key} not found in stack"
+            raise KeyError(msg)
+        return self._cards[key]
+
     def __repr__(self) -> str:
         """Return a detailed string representation of the stack."""
         return f"Stack({list(self)})"

@@ -66,6 +66,20 @@ class PropertyFilter(ABC):
         """
 
 
+# Create operator mapping to reduce complexity and return statements
+OPERATORS = {
+    FilterOperator.EQUALS: lambda cv, v: cv == v,
+    FilterOperator.NOT_EQUALS: lambda cv, v: cv != v,
+    FilterOperator.CONTAINS: lambda cv, v: v.lower() in str(cv).lower(),
+    FilterOperator.GREATER_THAN: lambda cv, v: cv is not None and cv > v,
+    FilterOperator.LESS_THAN: lambda cv, v: cv is not None and cv < v,
+    FilterOperator.GREATER_EQUAL: lambda cv, v: cv is not None and cv >= v,
+    FilterOperator.LESS_EQUAL: lambda cv, v: cv is not None and cv <= v,
+    FilterOperator.IN: lambda cv, v: cv in v,
+    FilterOperator.NOT_IN: lambda cv, v: cv not in v,
+}
+
+
 class CardPropertyFilter(PropertyFilter):
     """Concrete implementation of PropertyFilter for card objects."""
 
@@ -84,20 +98,7 @@ class CardPropertyFilter(PropertyFilter):
 
         card_value = getattr(card, self.property_name)
 
-        # Create operator mapping to reduce complexity and return statements
-        operators = {
-            FilterOperator.EQUALS: lambda cv, v: cv == v,
-            FilterOperator.NOT_EQUALS: lambda cv, v: cv != v,
-            FilterOperator.CONTAINS: lambda cv, v: v.lower() in str(cv).lower(),
-            FilterOperator.GREATER_THAN: lambda cv, v: cv is not None and cv > v,
-            FilterOperator.LESS_THAN: lambda cv, v: cv is not None and cv < v,
-            FilterOperator.GREATER_EQUAL: lambda cv, v: cv is not None and cv >= v,
-            FilterOperator.LESS_EQUAL: lambda cv, v: cv is not None and cv <= v,
-            FilterOperator.IN: lambda cv, v: cv in v,
-            FilterOperator.NOT_IN: lambda cv, v: cv not in v,
-        }
-
-        operation = operators.get(self.operator)
+        operation = OPERATORS.get(self.operator)
         if operation:
             return operation(card_value, self.value)
 
