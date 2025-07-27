@@ -267,6 +267,51 @@ class Stack(Generic[T]):
         """Return a detailed string representation of the stack."""
         return f"Stack({list(self)})"
 
+    def to_dataframe(self) -> object:
+        """Convert the stack to a pandas DataFrame.
+
+        Returns:
+            A pandas DataFrame where each row represents a card and contains
+            all card attributes plus a 'count' column.
+
+        Raises:
+            ImportError: If pandas is not installed.
+
+        """
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            msg = (
+                "pandas is required for this operation. "
+                "Install with: pip install pandas"
+            )
+            raise ImportError(msg) from exc
+
+        if not self._cards:
+            # Return empty DataFrame with expected columns for base Card type
+            return pd.DataFrame(columns=["name", "slug", "tags", "source", "count"])
+
+        # Collect all card data
+        data = []
+        for card, count in self.items():
+            # Get all the card's data using model_dump
+            card_data = card.model_dump()
+
+            # Handle set fields (tags, colors) by converting to list
+            # for DataFrame compatibility
+            if "tags" in card_data and isinstance(card_data["tags"], set):
+                card_data["tags"] = list(card_data["tags"]) if card_data["tags"] else []
+            if "colors" in card_data and isinstance(card_data["colors"], set):
+                card_data["colors"] = (
+                    list(card_data["colors"]) if card_data["colors"] else []
+                )
+
+            # Add the count
+            card_data["count"] = count
+            data.append(card_data)
+
+        return pd.DataFrame(data)
+
     def _clean_dict(self) -> None:
         for key in list(self._cards.keys()):
             if not self._cards[key]:
