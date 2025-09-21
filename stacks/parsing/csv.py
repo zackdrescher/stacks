@@ -136,6 +136,7 @@ class CsvStackReader(StackReader):
         """Detect the card type based on available CSV columns.
 
         Returns:
+            "moxfield" if Moxfield collection format is detected
             "scryfall" if Scryfall-specific columns are present
             "print" if Print-specific columns are present
             "card" for basic card columns only
@@ -145,6 +146,27 @@ class CsvStackReader(StackReader):
             return "card"
 
         columns = set(reader.fieldnames)
+
+        # Moxfield collection format detection
+        moxfield_columns = {"Name", "Edition", "Count"}
+        moxfield_optional = {
+            "Condition",
+            "Language",
+            "Foil",
+            "Collector Number",
+            "Alter",
+            "Purchase Price",
+            "Playtest Card",
+        }
+
+        # Check for Moxfield format - either:
+        # 1. Has Name, Edition, Count (core Moxfield columns)
+        # 2. Has Name + Edition + at least one optional Moxfield column
+        if moxfield_columns.issubset(columns) or (
+            {"Name", "Edition"}.issubset(columns)
+            and len(moxfield_optional.intersection(columns)) >= 1
+        ):
+            return "moxfield"
 
         # Scryfall-specific columns that indicate ScryfallCard format
         scryfall_columns = {
@@ -181,11 +203,13 @@ class CsvStackReader(StackReader):
 
         columns = set(reader.fieldnames)
 
-        # All formats require these basic columns
-        basic_required = {"Count", "Card Name"}
-
-        if card_type == "scryfall":
+        # Different formats require different columns
+        if card_type == "moxfield":
+            # For Moxfield, we need Count, Name (maps to Card Name), and Edition
+            required_columns = {"Count", "Name", "Edition"}
+        elif card_type == "scryfall":
             # For ScryfallCard, we need Count, Card Name, and at least one field
+            basic_required = {"Count", "Card Name"}
             required_columns = basic_required
             scryfall_columns = {
                 "Set Code",
@@ -204,9 +228,11 @@ class CsvStackReader(StackReader):
         elif card_type == "print":
             # For Print, we only need the basic columns + Set Name
             # Foil and Price are optional (have defaults)
+            basic_required = {"Count", "Card Name"}
             required_columns = basic_required | {"Set Name"}
         else:  # card_type == "card"
             # For basic Card, we only need name and count
+            basic_required = {"Count", "Card Name"}
             required_columns = basic_required
 
         missing = required_columns - columns
@@ -274,11 +300,18 @@ class CsvStackReader(StackReader):
     ) -> list[Any]:
         """Parse a single CSV row into a list of card objects."""
         count = self._safe_int(row["Count"], "count", row_num)
-        card_name = row["Card Name"].strip()
+
+        # Extract card name based on format
+        if card_type == "moxfield":
+            card_name = row["Name"].strip()
+        else:
+            card_name = row["Card Name"].strip()
 
         self._validate_count(count, row_num)
         self._validate_card_name(card_name, row_num)
 
+        if card_type == "moxfield":
+            return self._create_moxfield_cards(row, card_name, count, row_num)
         if card_type == "scryfall":
             return self._create_scryfall_cards(row, card_name, count, row_num)
         if card_type == "print":
@@ -377,6 +410,104 @@ class CsvStackReader(StackReader):
                 foil=foil,
                 price=price,
                 collector_number=collector_number,
+                tags=tags,
+            )
+            for _ in range(count)
+        ]
+
+    def _create_moxfield_cards(
+        self,
+        row: dict[str, str],
+        card_name: str,
+        count: int,
+        row_num: int,
+    ) -> list[Print]:
+        """Create Print objects from Moxfield CSV row data."""
+        # Map Moxfield Edition to set
+        set_name = row.get("Edition", "").strip()
+
+        # Parse Moxfield Foil field - can be "foil", "etched", or blank
+        foil_value = row.get("Foil", "").strip().lower()
+        foil = foil_value in ("foil", "etched")
+
+        # Parse Moxfield Purchase Price
+        price = None
+        if "Purchase Price" in row and row["Purchase Price"].strip():
+            price = self._safe_float(row["Purchase Price"], "purchase price", row_num)
+
+        # Parse Moxfield Condition
+        condition = None
+        if "Condition" in row and row["Condition"].strip():
+            condition = row["Condition"].strip()
+
+        # Parse Moxfield Language (default to English if not specified)
+        language = "en"  # Default as per Moxfield spec
+        if "Language" in row and row["Language"].strip():
+            language_value = row["Language"].strip().lower()
+            # Map Moxfield language codes to standard codes
+            language_map = {
+                "english": "en",
+                "en": "en",
+                "spanish": "es",
+                "sp": "es",
+                "es": "es",
+                "french": "fr",
+                "fr": "fr",
+                "german": "de",
+                "de": "de",
+                "italian": "it",
+                "it": "it",
+                "portuguese": "pt",
+                "pt": "pt",
+                "japanese": "ja",
+                "jp": "ja",
+                "ja": "ja",
+                "korean": "ko",
+                "kr": "ko",
+                "ko": "ko",
+                "russian": "ru",
+                "ru": "ru",
+                "simplified chinese": "zhs",
+                "cs": "zhs",
+                "zhs": "zhs",
+                "traditional chinese": "zht",
+                "ct": "zht",
+                "zht": "zht",
+                "hebrew": "he",
+                "he": "he",
+                "latin": "la",
+                "la": "la",
+                "ancient greek": "grc",
+                "grc": "grc",
+                "arabic": "ar",
+                "ar": "ar",
+                "sanskrit": "sa",
+                "sa": "sa",
+                "phyrexian": "ph",
+                "ph": "ph",
+            }
+            language = language_map.get(language_value, language_value)
+
+        # Parse Moxfield Collector Number
+        collector_number = None
+        if "Collector Number" in row and row["Collector Number"].strip():
+            collector_number = row["Collector Number"].strip()
+
+        # Parse tags if present
+        tags: set[str] = set()
+        if "Tags" in row:
+            tags = self._parse_tags(row["Tags"])
+
+        # Create the specified number of print copies
+        return [
+            Print(
+                name=card_name,
+                set=set_name,
+                foil=foil,
+                condition=condition,
+                language=language,
+                collector_number=collector_number,
+                price=price,
                 tags=tags,
             )
             for _ in range(count)

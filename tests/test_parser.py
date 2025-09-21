@@ -878,3 +878,181 @@ def test_tags_parsing_edge_cases() -> None:
 
     # Test tags with empty elements
     assert reader._parse_tags("red,,blue") == {"red", "blue"}
+
+
+def test_parse_moxfield_collection_basic() -> None:
+    """Test parsing basic Moxfield collection format."""
+    csv_content = StringIO("""Count,Name,Edition,Condition,Language,Foil,Collector Number,Purchase Price
+1,Lightning Bolt,lea,Near Mint,English,,1,
+2,Counterspell,leb,Lightly Played,English,foil,5,25.50
+1,Black Lotus,lea,Mint,English,etched,10,5000.00
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+
+    # Check that correct number of cards were created
+    assert len(list(stack)) == 4
+    assert len(stack.unique_cards()) == 3
+
+    # Check specific cards
+    lightning_bolt = Print(
+        name="Lightning Bolt",
+        set="lea",
+        foil=False,
+        condition="Near Mint",
+        language="en",
+        collector_number="1",
+        price=None,
+    )
+    counterspell = Print(
+        name="Counterspell",
+        set="leb",
+        foil=True,
+        condition="Lightly Played",
+        language="en",
+        collector_number="5",
+        price=25.50,
+    )
+    black_lotus = Print(
+        name="Black Lotus",
+        set="lea",
+        foil=True,  # etched maps to True
+        condition="Mint",
+        language="en",
+        collector_number="10",
+        price=5000.00,
+    )
+
+    assert stack.count(lightning_bolt) == 1
+    assert stack.count(counterspell) == 2
+    assert stack.count(black_lotus) == 1
+
+
+def test_parse_moxfield_collection_minimal() -> None:
+    """Test parsing minimal Moxfield collection format with required fields only."""
+    csv_content = StringIO("""Count,Name,Edition
+1,Lightning Bolt,lea
+2,Counterspell,leb
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+
+    # Check that cards were created with defaults
+    assert len(list(stack)) == 3
+    assert len(stack.unique_cards()) == 2
+
+    # Check that defaults are applied
+    for card in stack.unique_cards():
+        assert card.foil is False  # Default foil
+        assert card.language == "en"  # Default language
+        assert card.condition is None  # No condition specified
+        assert card.price is None  # No price specified
+        assert card.collector_number is None  # No collector number
+
+
+def test_parse_moxfield_language_mapping() -> None:
+    """Test Moxfield language code mapping."""
+    csv_content = StringIO("""Count,Name,Edition,Language
+1,Lightning Bolt,lea,English
+1,Foudre,lea,French
+1,Blitz,lea,German
+1,Rayo,lea,Spanish
+1,Saetta,lea,Italian
+1,稲妻,lea,Japanese
+1,번개,lea,Korean
+1,闪电,lea,Simplified Chinese
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    unique_cards = stack.unique_cards()
+
+    # Check language mappings
+    language_map = {card.name: card.language for card in unique_cards}
+
+    assert language_map["Lightning Bolt"] == "en"
+    assert language_map["Foudre"] == "fr"
+    assert language_map["Blitz"] == "de"
+    assert language_map["Rayo"] == "es"
+    assert language_map["Saetta"] == "it"
+    assert language_map["稲妻"] == "ja"
+    assert language_map["번개"] == "ko"
+    assert language_map["闪电"] == "zhs"
+
+
+def test_parse_moxfield_foil_variations() -> None:
+    """Test parsing Moxfield foil field variations."""
+    csv_content = StringIO("""Count,Name,Edition,Foil
+1,Card1,set,
+1,Card2,set,foil
+1,Card3,set,etched
+1,Card4,set,FOIL
+1,Card5,set,ETCHED
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    unique_cards = stack.unique_cards()
+
+    # Create mapping of card name to foil status
+    foil_map = {card.name: card.foil for card in unique_cards}
+
+    assert foil_map["Card1"] is False  # Empty = not foil
+    assert foil_map["Card2"] is True  # "foil" = foil
+    assert foil_map["Card3"] is True  # "etched" = foil
+    assert foil_map["Card4"] is True  # Case insensitive
+    assert foil_map["Card5"] is True  # Case insensitive
+
+
+def test_parse_moxfield_detection() -> None:
+    """Test that Moxfield format is correctly detected."""
+    import csv
+
+    from stacks.parsing.csv import CsvStackReader
+
+    # Moxfield format should be detected
+    moxfield_content = StringIO("""Count,Name,Edition,Condition,Language,Foil,Collector Number
+1,Lightning Bolt,lea,Near Mint,English,,1
+""")
+
+    reader = CsvStackReader()
+    csv_reader = csv.DictReader(moxfield_content)
+    card_type = reader._detect_card_type(csv_reader)
+
+    assert card_type == "moxfield"
+
+
+def test_parse_moxfield_vs_standard_print_detection() -> None:
+    """Test that Moxfield format is distinguished from standard Print format."""
+    import csv
+
+    from stacks.parsing.csv import CsvStackReader
+
+    # Standard Print format should not be detected as Moxfield
+    print_content = StringIO("""Count,Card Name,Set Name,Foil,Price
+1,Lightning Bolt,lea,false,100.00
+""")
+
+    reader = CsvStackReader()
+    csv_reader = csv.DictReader(print_content)
+    card_type = reader._detect_card_type(csv_reader)
+
+    assert card_type == "print"  # Should be print, not moxfield
+
+
+def test_parse_moxfield_with_all_fields() -> None:
+    """Test parsing Moxfield format with all possible fields."""
+    csv_content = StringIO("""Count,Tradelist Count,Name,Edition,Condition,Language,Foil,Tags,Last Modified,Collector Number,Alter,Proxy,Purchase Price
+1,1,Lightning Bolt,lea,Near Mint,English,foil,red deck,2023-01-01 12:00:00,1,False,False,100.50
+""")
+
+    stack = parse_csv_collection_content(csv_content)
+    card = list(stack)[0]
+
+    # Check all fields are parsed correctly
+    assert card.name == "Lightning Bolt"
+    assert card.set == "lea"
+    assert card.condition == "Near Mint"
+    assert card.language == "en"
+    assert card.foil is True
+    assert card.collector_number == "1"
+    assert card.price == 100.50
+    assert "red deck" in card.tags
