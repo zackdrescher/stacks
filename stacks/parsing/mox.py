@@ -257,6 +257,7 @@ class MoxfieldStackReader(StackReader[Card]):
         return tags
 
 
+@register_writer("txt")
 @register_writer("mox")
 class MoxfieldStackWriter(StackWriter[Card]):
     """Writer for Moxfield deck files."""
@@ -274,25 +275,27 @@ class MoxfieldStackWriter(StackWriter[Card]):
 
     def _format_moxfield_deck_content(self, stack: Stack[Card]) -> str:
         """Format a Stack of cards as Moxfield deck content."""
-        # Group cards by name and tags to count them properly
         card_data: dict[
-            tuple[str, tuple[str, ...]],
-            dict[str, int | str | set[str]],
+            tuple[str, tuple[str, ...], str | None, str | None],
+            dict[str, int | str | set[str] | None],
         ] = {}
 
         for card in stack:
-            key = (card.name, tuple(sorted(card.tags)))
+            set_code = getattr(card, "set", None)
+            collector_number = getattr(card, "collector_number", None)
+            key = (card.name, tuple(sorted(card.tags)), set_code, collector_number)
             if key not in card_data:
                 card_data[key] = {
                     "count": 0,
                     "name": card.name,
                     "tags": card.tags,
+                    "set_code": set_code,
+                    "collector_number": collector_number,
                 }
             count_value = card_data[key]["count"]
             if isinstance(count_value, int):
                 card_data[key]["count"] = count_value + 1
 
-        # Check if stack is empty
         if not card_data:
             return ""
 
@@ -304,22 +307,21 @@ class MoxfieldStackWriter(StackWriter[Card]):
             line = self._format_card_line(card_info)
             lines.append(line)
 
-        # Ensure the file ends with a newline
         return "\n".join(lines) + "\n"
 
     def _format_card_line(
         self,
-        card_info: dict[str, int | str | set[str]],
+        card_info: dict[str, int | str | set[str] | None],
     ) -> str:
         """Format a single card line."""
         count = card_info["count"]
         name = card_info["name"]
         tags = card_info["tags"]
+        set_code = card_info.get("set_code") or "UNK"
+        cn = card_info.get("collector_number") or "000"
 
-        # For now, use a simplified format: "count name (UNK) 000"
-        line = f"{count} {name} (UNK) 000"
+        line = f"{count} {name} ({set_code}) {cn}"
 
-        # Add tag information if present
         if tags and isinstance(tags, set):
             tag_parts = self._format_tags(tags)
             if tag_parts:

@@ -6,8 +6,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
+import requests
 
-from stacks.parsing.io_registry import load_stack_from_file
+from stacks.moxfield.client import MoxfieldClient
+from stacks.moxfield.puller import MoxfieldPuller
+from stacks.parsing.io_registry import load_stack_from_file, write_stack_to_file
 from stacks.scryfall.client import ScryfallClient
 from stacks.scryfall.scryer import Scryer
 
@@ -304,10 +307,87 @@ def _parse_convenience_filters(kwargs: dict) -> list:
 
 def _write_filtered_result(filtered_stack: Stack, output: Path) -> None:
     """Write the filtered stack to the output file."""
-    from stacks.parsing.io_registry import write_stack_to_file
-
     from .converters import normalize_stack_for_output
 
     output_ext = output.suffix.lstrip(".")
     normalized_stack = normalize_stack_for_output(filtered_stack, output_ext)
     write_stack_to_file(normalized_stack, str(output))
+
+
+@click.command()
+@click.argument("source")
+@click.argument("output", type=click.Path(path_type=Path))
+@click.option(
+    "--token",
+    envvar="MOXFIELD_TOKEN",
+    default=None,
+    help=(
+        "Bearer token for private decks (or set MOXFIELD_TOKEN env var). "
+        "Find it in browser DevTools → Network → any moxfield.com request "
+        "→ Authorization header."
+    ),
+)
+def pull(source: str, output: Path, token: str | None) -> None:
+    r"""Fetch a Moxfield deck and save it to a local file.
+
+    SOURCE may be a full Moxfield URL or a bare deck ID.
+    Output format is inferred from the file extension.
+
+    Examples:
+    \b
+        stacks pull https://moxfield.com/decks/AbCd1234 deck.mox
+        stacks pull AbCd1234 deck.csv
+        stacks pull AbCd1234 deck.arena --token eyJ...
+
+    """
+    try:
+        client = MoxfieldClient(token=token)
+        puller = MoxfieldPuller(client)
+
+        click.echo(f"Fetching deck from Moxfield: {source}")
+        stack = puller.pull(source)
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        click.echo(f"Writing {len(stack)} cards to {output}...")
+        write_stack_to_file(stack, str(output))
+        click.echo(f"Done. Saved {len(stack)} cards to {output}.")
+
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+    except requests.HTTPError as e:
+        raise click.ClickException(f"Moxfield API error: {e}") from e
+    except OSError as e:
+        raise click.ClickException(f"File I/O error: {e}") from e
+
+
+@click.command()
+@click.argument("input_file", type=click.Path(exists=True, path_type=Path))
+@click.argument("output", type=click.Path(path_type=Path))
+def push(input_file: Path, output: Path) -> None:
+    r"""Convert a local deck file to Moxfield-importable format.
+
+    Reads INPUT_FILE in any supported format and writes OUTPUT as a
+    Moxfield-importable text file. Use a .mox or .txt extension for OUTPUT,
+    then paste the file contents into Moxfield's Import dialog.
+
+    Examples:
+    \b
+        stacks push deck.csv deck.mox
+        stacks push deck.arena deck.txt
+
+    """
+    try:
+        click.echo(f"Loading stack from {input_file}...")
+        stack = load_stack_from_file(str(input_file))
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        click.echo(f"Writing Moxfield-importable file to {output}...")
+        write_stack_to_file(stack, str(output))
+
+        click.echo(f"Done. {len(stack)} cards written to {output}.")
+        click.echo("Paste the file contents into Moxfield's Import dialog.")
+
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+    except OSError as e:
+        raise click.ClickException(f"File I/O error: {e}") from e

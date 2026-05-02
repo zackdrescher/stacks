@@ -20,6 +20,7 @@ click = "^8.1.7"
 requests = "^2.32.4"
 tqdm = "^4.67.1"
 pandas = "^2.3.1"
+cloudscraper = "^1.2.71"
 
 
 [tool.poetry.group.dev.dependencies]

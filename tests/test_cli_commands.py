@@ -376,7 +376,7 @@ class TestParseConvenienceFilters:
 class TestWriteFilteredResult:
     """Test cases for _write_filtered_result helper function."""
 
-    @patch("stacks.parsing.io_registry.write_stack_to_file")
+    @patch("stacks.cli.commands.write_stack_to_file")
     @patch("stacks.cli.converters.normalize_stack_for_output")
     def test_write_filtered_result(
         self,
