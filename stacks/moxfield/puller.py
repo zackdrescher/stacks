@@ -23,16 +23,24 @@ class MoxfieldPuller:
         """
         self.client = client
 
-    def pull(self, url_or_id: str) -> Stack[Print]:
+    def pull(
+        self,
+        url_or_id: str,
+        include_sideboard: bool = False,
+        include_maybeboard: bool = False,
+    ) -> Stack[Print]:
         """Fetch a deck and return it as a Stack of Prints.
 
-        Includes mainboard and commanders; sideboard is intentionally excluded.
+        Always includes mainboard and commanders. Sideboard and maybeboard
+        are opt-in.
 
         Args:
             url_or_id: Full Moxfield URL or bare deck ID.
+            include_sideboard: Also include sideboard cards.
+            include_maybeboard: Also include maybeboard cards.
 
         Returns:
-            A Stack[Print] with all mainboard and commander cards.
+            A Stack[Print] with the requested sections combined.
 
         Raises:
             ValueError: If the deck is not found.
@@ -49,6 +57,10 @@ class MoxfieldPuller:
         prints: list[Print] = []
         prints.extend(self._parse_board(data.get("mainboard", {})))
         prints.extend(self._parse_board(data.get("commanders", {})))
+        if include_sideboard:
+            prints.extend(self._parse_board(data.get("sideboard", {})))
+        if include_maybeboard:
+            prints.extend(self._parse_board(data.get("maybeboard", {})))
 
         return Stack(prints)
 

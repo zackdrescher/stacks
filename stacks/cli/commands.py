@@ -327,7 +327,9 @@ def _write_filtered_result(filtered_stack: Stack, output: Path) -> None:
         "→ Authorization header."
     ),
 )
-def pull(source: str, output: Path, token: str | None) -> None:
+@click.option("--sideboard", "-s", is_flag=True, default=False, help="Include sideboard cards.")
+@click.option("--maybeboard", "-m", is_flag=True, default=False, help="Include maybeboard cards.")
+def pull(source: str, output: Path, token: str | None, sideboard: bool, maybeboard: bool) -> None:
     r"""Fetch a Moxfield deck and save it to a local file.
 
     SOURCE may be a full Moxfield URL or a bare deck ID.
@@ -336,8 +338,8 @@ def pull(source: str, output: Path, token: str | None) -> None:
     Examples:
     \b
         stacks pull https://moxfield.com/decks/AbCd1234 deck.mox
-        stacks pull AbCd1234 deck.csv
-        stacks pull AbCd1234 deck.arena --token eyJ...
+        stacks pull AbCd1234 deck.csv --sideboard
+        stacks pull AbCd1234 deck.arena --maybeboard --token eyJ...
 
     """
     try:
@@ -345,7 +347,7 @@ def pull(source: str, output: Path, token: str | None) -> None:
         puller = MoxfieldPuller(client)
 
         click.echo(f"Fetching deck from Moxfield: {source}")
-        stack = puller.pull(source)
+        stack = puller.pull(source, include_sideboard=sideboard, include_maybeboard=maybeboard)
 
         output.parent.mkdir(parents=True, exist_ok=True)
         click.echo(f"Writing {len(stack)} cards to {output}...")

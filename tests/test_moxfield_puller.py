@@ -68,13 +68,43 @@ class TestMoxfieldPuller:
         names = {c.name for c in result.unique_cards()}
         assert "Atraxa, Praetors' Voice" in names
 
-    def test_pull_sideboard_excluded(self) -> None:
+    def test_pull_sideboard_excluded_by_default(self) -> None:
         self.mock_client.get_deck.return_value = SAMPLE_DECK
 
         result = self.puller.pull("AbCd1234")
 
         names = {c.name for c in result.unique_cards()}
         assert "Island" not in names
+
+    def test_pull_sideboard_included_when_flag_set(self) -> None:
+        self.mock_client.get_deck.return_value = SAMPLE_DECK
+
+        result = self.puller.pull("AbCd1234", include_sideboard=True)
+
+        names = {c.name for c in result.unique_cards()}
+        assert "Island" in names
+
+    def test_pull_maybeboard_excluded_by_default(self) -> None:
+        deck = {**SAMPLE_DECK, "maybeboard": {
+            "Swamp": {"quantity": 5, "isFoil": False, "card": {"name": "Swamp", "set": "lea", "cn": "294"}},
+        }}
+        self.mock_client.get_deck.return_value = deck
+
+        result = self.puller.pull("AbCd1234")
+
+        names = {c.name for c in result.unique_cards()}
+        assert "Swamp" not in names
+
+    def test_pull_maybeboard_included_when_flag_set(self) -> None:
+        deck = {**SAMPLE_DECK, "maybeboard": {
+            "Swamp": {"quantity": 5, "isFoil": False, "card": {"name": "Swamp", "set": "lea", "cn": "294"}},
+        }}
+        self.mock_client.get_deck.return_value = deck
+
+        result = self.puller.pull("AbCd1234", include_maybeboard=True)
+
+        names = {c.name for c in result.unique_cards()}
+        assert "Swamp" in names
 
     def test_pull_foil_flag_preserved(self) -> None:
         self.mock_client.get_deck.return_value = SAMPLE_DECK
