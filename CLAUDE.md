@@ -84,6 +84,13 @@ Commands in `stacks/cli/commands.py`: `difference`, `union`, `intersection`, `en
 
 `stacks/filtering.py` — `FilterOperator` enum (EQUALS, CONTAINS, GREATER_THAN, etc.) drives `CardPropertyFilter` and `FilterableStack` for AND-logic multi-filter queries on card properties.
 
+## Testing Conventions
+
+- All Python changes must include corresponding tests.
+- New functions and methods get unit tests in the relevant `tests/test_*.py` file.
+- New CLI commands get tests in `tests/test_cli_commands.py` or `tests/test_cli_moxfield_commands.py`.
+- Run `poetry run pytest` after every change to verify nothing is broken.
+
 ## Key Design Conventions
 
 - Cards are immutable (frozen Pydantic models); operations always return new Stack instances.
