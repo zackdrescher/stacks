@@ -315,6 +315,31 @@ def _write_filtered_result(filtered_stack: Stack, output: Path) -> None:
 
 
 @click.command()
+@click.argument("input_file", type=click.Path(exists=True, path_type=Path))
+@click.argument("output", type=click.Path(path_type=Path))
+@click.argument("tags", nargs=-1, required=True)
+def tag(input_file: Path, output: Path, tags: tuple[str, ...]) -> None:
+    r"""Add one or more tags to all cards in a stack.
+
+    Loads INPUT_FILE, applies each TAG to every card, and writes the result
+    to OUTPUT.
+
+    Examples:
+    \b
+        stacks tag collection.csv tagged.csv commander
+        stacks tag deck.csv deck_tagged.csv budget staple
+
+    """
+    stack = load_stack_from_file(str(input_file))
+    for t in tags:
+        stack.add_tag(t)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    write_stack_to_file(stack, str(output))
+    click.echo(f"Tagged {len(list(stack))} cards with: {', '.join(tags)}")
+
+
+@click.command()
 @click.argument("source")
 @click.argument("output", type=click.Path(path_type=Path))
 @click.option(

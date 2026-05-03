@@ -398,6 +398,101 @@ class TestWriteFilteredResult:
         mock_write.assert_called_once_with(mock_normalized, "output.csv")
 
 
+class TestTagCommand:
+    """Test cases for the tag command."""
+
+    def setup_method(self) -> None:
+        """Set up test fixtures."""
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.input_file = self.temp_dir / "input.csv"
+        self.output_file = self.temp_dir / "output.csv"
+
+    @patch("stacks.cli.commands.load_stack_from_file")
+    @patch("stacks.cli.commands.write_stack_to_file")
+    def test_tag_single_tag(self, mock_write: Mock, mock_load: Mock) -> None:
+        """Test tagging a stack with a single tag."""
+        from stacks.cli.commands import tag
+        from stacks.cards.card import Card
+        from stacks.stack import Stack
+
+        self.input_file.touch()
+        stack = Stack([Card(name="Lightning Bolt"), Card(name="Counterspell")])
+        mock_load.return_value = stack
+
+        runner = CliRunner()
+        result = runner.invoke(tag, [str(self.input_file), str(self.output_file), "commander"])
+
+        assert result.exit_code == 0
+        mock_load.assert_called_once_with(str(self.input_file))
+        mock_write.assert_called_once()
+        written_stack = mock_write.call_args[0][0]
+        for card in written_stack:
+            assert "commander" in card.tags
+
+    @patch("stacks.cli.commands.load_stack_from_file")
+    @patch("stacks.cli.commands.write_stack_to_file")
+    def test_tag_multiple_tags(self, mock_write: Mock, mock_load: Mock) -> None:
+        """Test tagging a stack with multiple tags."""
+        from stacks.cli.commands import tag
+        from stacks.cards.card import Card
+        from stacks.stack import Stack
+
+        self.input_file.touch()
+        stack = Stack([Card(name="Lightning Bolt")])
+        mock_load.return_value = stack
+
+        runner = CliRunner()
+        result = runner.invoke(
+            tag,
+            [str(self.input_file), str(self.output_file), "budget", "staple"],
+        )
+
+        assert result.exit_code == 0
+        written_stack = mock_write.call_args[0][0]
+        for card in written_stack:
+            assert "budget" in card.tags
+            assert "staple" in card.tags
+
+    @patch("stacks.cli.commands.load_stack_from_file")
+    @patch("stacks.cli.commands.write_stack_to_file")
+    def test_tag_prints_summary(self, mock_write: Mock, mock_load: Mock) -> None:
+        """Test that the tag command prints a summary line."""
+        from stacks.cli.commands import tag
+        from stacks.cards.card import Card
+        from stacks.stack import Stack
+
+        self.input_file.touch()
+        mock_load.return_value = Stack([Card(name="Lightning Bolt"), Card(name="Counterspell")])
+
+        runner = CliRunner()
+        result = runner.invoke(tag, [str(self.input_file), str(self.output_file), "commander"])
+
+        assert result.exit_code == 0
+        assert "commander" in result.output
+
+    def test_tag_missing_tags_argument(self) -> None:
+        """Test that omitting TAGS produces an error."""
+        from stacks.cli.commands import tag
+
+        self.input_file.touch()
+        runner = CliRunner()
+        result = runner.invoke(tag, [str(self.input_file), str(self.output_file)])
+
+        assert result.exit_code != 0
+
+    def test_tag_missing_input_file(self) -> None:
+        """Test that a non-existent input file produces an error."""
+        from stacks.cli.commands import tag
+
+        runner = CliRunner()
+        result = runner.invoke(
+            tag,
+            [str(self.temp_dir / "nonexistent.csv"), str(self.output_file), "commander"],
+        )
+
+        assert result.exit_code != 0
+
+
 class TestIntegration:
     """Integration tests for commands with real data."""
 
