@@ -3,11 +3,25 @@
 from __future__ import annotations
 
 import click
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Import parsing modules to ensure readers/writers are registered
 import stacks.parsing  # noqa: F401
 
-from .commands import difference, enrich, filter_stack, intersection, list_operations, pull, push, tag, union
+from .commands import (
+    difference,
+    enrich,
+    filter_stack,
+    intersection,
+    list_operations,
+    pull,
+    push,
+    sync,
+    tag,
+    union,
+)
 
 __all__ = ["cli"]
 
@@ -26,4 +40,5 @@ cli.add_command(enrich)
 cli.add_command(filter_stack)
 cli.add_command(pull)
 cli.add_command(push)
+cli.add_command(sync)
 cli.add_command(tag)

@@ -1,9 +1,8 @@
 """Tests for the pull and push CLI commands."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
-import pytest
 import requests
 from click.testing import CliRunner
 
@@ -29,7 +28,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_success(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.return_value = _make_print_stack()
@@ -44,7 +43,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_deck_not_found(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.side_effect = ValueError("Deck not found: bad-id")
@@ -59,7 +58,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_http_error(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.side_effect = requests.HTTPError("403 Forbidden")
@@ -75,7 +74,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_token_forwarded_to_client(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.return_value = _make_print_stack()
@@ -90,7 +89,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_token_from_env_var(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.return_value = _make_print_stack()
@@ -110,7 +109,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_no_token_passes_none(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.return_value = _make_print_stack()
@@ -125,10 +124,10 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_shows_card_count(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         stack = Stack(
-            [Print(name=f"Card {i}", set="LEA") for i in range(3)]
+            [Print(name=f"Card {i}", set="LEA") for i in range(3)],
         )
         mock_puller = Mock()
         mock_puller.pull.return_value = stack
@@ -166,7 +165,7 @@ class TestPushCommand:
     def test_push_nonexistent_input_file(self, tmp_path: Path) -> None:
         output = tmp_path / "output.mox"
         result = self.runner.invoke(
-            cli, ["push", str(tmp_path / "missing.mox"), str(output)]
+            cli, ["push", str(tmp_path / "missing.mox"), str(output)],
         )
         assert result.exit_code != 0
 
@@ -198,3 +197,164 @@ class TestPushCommand:
 
         content = output.read_text()
         assert "Lightning Bolt" in content
+
+
+class TestSyncCommand:
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    def test_sync_missing_config(self, tmp_path: Path) -> None:
+        result = self.runner.invoke(
+            cli, ["sync", "--config", str(tmp_path / "missing.json")],
+        )
+        assert result.exit_code != 0
+        assert "not found" in result.output.lower() or "Error" in result.output
+
+    def test_sync_empty_config(self, tmp_path: Path) -> None:
+        config = tmp_path / "tracked.json"
+        config.write_text('{"decks": []}')
+
+        result = self.runner.invoke(cli, ["sync", "--config", str(config)])
+
+        assert result.exit_code == 0
+        assert "No decks tracked" in result.output
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_sync_success(
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
+    ) -> None:
+        config = tmp_path / "tracked.json"
+        config.write_text(
+            '{"decks": ['
+            '{"url": "https://moxfield.com/decks/abc", "output": "data/decks/deck.moxfield"}'
+            "]}",
+        )
+        mock_puller = Mock()
+        mock_puller.pull.return_value = _make_print_stack()
+        mock_puller_cls.return_value = mock_puller
+
+        result = self.runner.invoke(cli, ["sync", "--config", str(config)])
+
+        assert result.exit_code == 0
+        mock_puller.pull.assert_called_once_with(
+            "https://moxfield.com/decks/abc",
+            include_sideboard=False,
+            include_maybeboard=False,
+        )
+        mock_write.assert_called_once()
+        assert "Sync complete" in result.output
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_sync_multiple_decks(
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
+    ) -> None:
+        config = tmp_path / "tracked.json"
+        config.write_text(
+            '{"decks": ['
+            '{"url": "https://moxfield.com/decks/abc", "output": "data/decks/a.moxfield"},'
+            '{"url": "https://moxfield.com/decks/xyz", "output": "data/decks/b.moxfield"}'
+            "]}",
+        )
+        mock_puller = Mock()
+        mock_puller.pull.return_value = _make_print_stack()
+        mock_puller_cls.return_value = mock_puller
+
+        result = self.runner.invoke(cli, ["sync", "--config", str(config)])
+
+        assert result.exit_code == 0
+        assert mock_puller.pull.call_count == 2
+        assert mock_write.call_count == 2
+        assert "2 succeeded" in result.output
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_sync_with_token(
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
+    ) -> None:
+        config = tmp_path / "tracked.json"
+        config.write_text(
+            '{"decks": [{"url": "https://moxfield.com/decks/abc", "output": "data/decks/deck.moxfield"}]}',
+        )
+        mock_puller = Mock()
+        mock_puller.pull.return_value = _make_print_stack()
+        mock_puller_cls.return_value = mock_puller
+
+        self.runner.invoke(cli, ["sync", "--config", str(config), "--token", "mytoken"])
+
+        mock_client_cls.assert_called_once_with(token="mytoken")
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_sync_deck_failure_continues(
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
+    ) -> None:
+        config = tmp_path / "tracked.json"
+        config.write_text(
+            '{"decks": ['
+            '{"url": "https://moxfield.com/decks/bad", "output": "data/decks/bad.moxfield"},'
+            '{"url": "https://moxfield.com/decks/good", "output": "data/decks/good.moxfield"}'
+            "]}",
+        )
+        mock_puller = Mock()
+        mock_puller.pull.side_effect = [
+            ValueError("Deck not found"),
+            _make_print_stack(),
+        ]
+        mock_puller_cls.return_value = mock_puller
+
+        result = self.runner.invoke(cli, ["sync", "--config", str(config)])
+
+        assert result.exit_code == 0
+        assert mock_write.call_count == 1
+        assert "1 succeeded" in result.output
+        assert "1 failed" in result.output
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_sync_sideboard_maybeboard_flags(
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
+    ) -> None:
+        config = tmp_path / "tracked.json"
+        config.write_text(
+            '{"decks": [{"url": "https://moxfield.com/decks/abc", "output": "data/decks/deck.moxfield",'
+            '"sideboard": true, "maybeboard": true}]}',
+        )
+        mock_puller = Mock()
+        mock_puller.pull.return_value = _make_print_stack()
+        mock_puller_cls.return_value = mock_puller
+
+        self.runner.invoke(cli, ["sync", "--config", str(config)])
+
+        mock_puller.pull.assert_called_once_with(
+            "https://moxfield.com/decks/abc",
+            include_sideboard=True,
+            include_maybeboard=True,
+        )
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_sync_config_from_env_var(
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
+    ) -> None:
+        config = tmp_path / "tracked.json"
+        config.write_text(
+            '{"decks": [{"url": "https://moxfield.com/decks/abc", "output": "data/decks/deck.moxfield"}]}',
+        )
+        mock_puller = Mock()
+        mock_puller.pull.return_value = _make_print_stack()
+        mock_puller_cls.return_value = mock_puller
+
+        result = self.runner.invoke(
+            cli, ["sync"], env={"STACKS_TRACKED_DECKS": str(config)},
+        )
+
+        assert result.exit_code == 0
+        mock_puller.pull.assert_called_once()

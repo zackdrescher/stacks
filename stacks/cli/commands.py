@@ -418,3 +418,76 @@ def push(input_file: Path, output: Path) -> None:
         raise click.ClickException(str(e)) from e
     except OSError as e:
         raise click.ClickException(f"File I/O error: {e}") from e
+
+
+@click.command()
+@click.option(
+    "--config",
+    type=click.Path(path_type=Path),
+    default="data/tracked_decks.json",
+    show_default=True,
+    envvar="STACKS_TRACKED_DECKS",
+    help="Path to tracked decks config file (or set STACKS_TRACKED_DECKS env var).",
+)
+@click.option(
+    "--token",
+    envvar="MOXFIELD_TOKEN",
+    default=None,
+    help="Bearer token for private decks (or set MOXFIELD_TOKEN env var).",
+)
+def sync(config: Path, token: str | None) -> None:
+    r"""Pull all tracked Moxfield decks from a config file.
+
+    Reads a JSON config file listing Moxfield deck URLs and their output paths,
+    then pulls each deck. Edit the config file to add or remove tracked decks.
+
+    Config file format:
+    \b
+        {
+          "decks": [
+            {
+              "url": "https://moxfield.com/decks/AbCd1234",
+              "output": "data/decks/my_deck.moxfield",
+              "sideboard": false,
+              "maybeboard": false
+            }
+          ]
+        }
+
+    Examples:
+    \b
+        stacks sync
+        stacks sync --config path/to/tracked_decks.json
+
+    """
+    from stacks.tracking import load_tracked_decks
+
+    try:
+        tracked = load_tracked_decks(config)
+    except FileNotFoundError as e:
+        raise click.ClickException(str(e)) from e
+
+    if not tracked.decks:
+        click.echo("No decks tracked. Add entries to the config file.")
+        return
+
+    client = MoxfieldClient(token=token)
+    puller = MoxfieldPuller(client)
+
+    errors: list[str] = []
+    for deck in tracked.decks:
+        try:
+            stack = puller.pull(
+                deck.url,
+                include_sideboard=deck.sideboard,
+                include_maybeboard=deck.maybeboard,
+            )
+            output_path = Path(deck.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            write_stack_to_file(stack, str(output_path))
+            click.echo(f"Pulled {deck.url} → {deck.output} ({len(stack)} cards)")
+        except (ValueError, requests.HTTPError, OSError) as e:
+            errors.append(f"{deck.url}: {e}")
+            click.echo(f"Failed {deck.url}: {e}")
+
+    click.echo(f"\nSync complete: {len(tracked.decks) - len(errors)} succeeded, {len(errors)} failed.")
