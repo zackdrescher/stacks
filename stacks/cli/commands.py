@@ -435,11 +435,15 @@ def push(input_file: Path, output: Path) -> None:
     default=None,
     help="Bearer token for private decks (or set MOXFIELD_TOKEN env var).",
 )
-def sync(config: Path, token: str | None) -> None:
+@click.option("--sideboard", "-s", is_flag=True, default=False, help="Include sideboard for all decks.")
+@click.option("--maybeboard", "-m", is_flag=True, default=False, help="Include maybeboard for all decks.")
+def sync(config: Path, token: str | None, sideboard: bool, maybeboard: bool) -> None:
     r"""Pull all tracked Moxfield decks from a config file.
 
     Reads a JSON config file listing Moxfield deck URLs and their output paths,
     then pulls each deck. Edit the config file to add or remove tracked decks.
+
+    The --sideboard and --maybeboard flags override the per-deck config settings.
 
     Config file format:
     \b
@@ -457,6 +461,7 @@ def sync(config: Path, token: str | None) -> None:
     Examples:
     \b
         stacks sync
+        stacks sync --sideboard --maybeboard
         stacks sync --config path/to/tracked_decks.json
 
     """
@@ -479,8 +484,8 @@ def sync(config: Path, token: str | None) -> None:
         try:
             stack = puller.pull(
                 deck.url,
-                include_sideboard=deck.sideboard,
-                include_maybeboard=deck.maybeboard,
+                include_sideboard=sideboard or deck.sideboard,
+                include_maybeboard=maybeboard or deck.maybeboard,
             )
             output_path = Path(deck.output)
             output_path.parent.mkdir(parents=True, exist_ok=True)

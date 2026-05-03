@@ -358,3 +358,26 @@ class TestSyncCommand:
 
         assert result.exit_code == 0
         mock_puller.pull.assert_called_once()
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_sync_global_flags_override_per_deck(
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
+    ) -> None:
+        config = tmp_path / "tracked.json"
+        config.write_text(
+            '{"decks": [{"url": "https://moxfield.com/decks/abc", "output": "data/decks/deck.moxfield",'
+            '"sideboard": false, "maybeboard": false}]}',
+        )
+        mock_puller = Mock()
+        mock_puller.pull.return_value = _make_print_stack()
+        mock_puller_cls.return_value = mock_puller
+
+        self.runner.invoke(cli, ["sync", "--config", str(config), "-s", "-m"])
+
+        mock_puller.pull.assert_called_once_with(
+            "https://moxfield.com/decks/abc",
+            include_sideboard=True,
+            include_maybeboard=True,
+        )
