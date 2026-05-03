@@ -550,7 +550,8 @@ class CsvStackWriter(StackWriter[Print]):
         # Group prints by their properties to calculate counts
         print_groups = self._group_prints_by_properties(stack)
 
-        # Write CSV header
+        has_tags = self._any_tags(print_groups)
+
         fieldnames = [
             "Count",
             "Card Name",
@@ -558,25 +559,24 @@ class CsvStackWriter(StackWriter[Print]):
             "Collector Number",
             "Foil",
             "Price",
-            "Tags",
         ]
+        if has_tags:
+            fieldnames.append("Tags")
+
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
 
-        # Write each group as a row
         for print_item, count in print_groups.items():
-            # Format tags as comma-separated string
-            tags_str = ",".join(print_item.tags) if print_item.tags else ""
-
             row = {
                 "Count": count,
                 "Card Name": print_item.name,
                 "Set Name": print_item.set or "",
-                "Collector Number": "",  # Not available in Print model
+                "Collector Number": "",
                 "Foil": str(print_item.foil).lower(),
                 "Price": print_item.price if print_item.price is not None else "",
-                "Tags": tags_str,
             }
+            if has_tags:
+                row["Tags"] = ",".join(print_item.tags) if print_item.tags else ""
             writer.writerow(row)
 
     def _group_prints_by_properties(self, stack: Stack[Print]) -> dict[Print, int]:
@@ -634,7 +634,8 @@ class ScryfallCsvStackWriter(StackWriter):
         # Group cards by their properties to calculate counts
         card_groups = self._group_cards_by_properties(stack)
 
-        # Write CSV header with ScryfallCard fields
+        has_tags = self._any_tags(card_groups)
+
         fieldnames = [
             "Count",
             "Card Name",
@@ -648,21 +649,17 @@ class ScryfallCsvStackWriter(StackWriter):
             "Colors",
             "Oracle ID",
             "Image URL",
-            "Tags",
         ]
+        if has_tags:
+            fieldnames.append("Tags")
+
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
 
-        # Write each group as a row
         for card_item, count in card_groups.items():
             colors_str = ""
             if hasattr(card_item, "colors") and card_item.colors:
                 colors_str = ",".join(sorted(color.value for color in card_item.colors))
-
-            # Format tags as comma-separated string
-            tags_str = ""
-            if hasattr(card_item, "tags") and card_item.tags:
-                tags_str = ",".join(card_item.tags)
 
             row = {
                 "Count": count,
@@ -677,8 +674,10 @@ class ScryfallCsvStackWriter(StackWriter):
                 "Colors": colors_str,
                 "Oracle ID": getattr(card_item, "oracle_id", None) or "",
                 "Image URL": getattr(card_item, "image_url", None) or "",
-                "Tags": tags_str,
             }
+            if has_tags:
+                tags = getattr(card_item, "tags", None)
+                row["Tags"] = ",".join(tags) if tags else ""
             writer.writerow(row)
 
     def _group_cards_by_properties(self, stack: Stack) -> dict[Any, int]:

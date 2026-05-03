@@ -66,3 +66,7 @@ class StackWriter(ABC, Generic[T]):
             file: File-like object to write to.
 
         """
+
+    def _any_tags(self, cards: object) -> bool:
+        """Return True if any card in cards has at least one tag."""
+        return any(getattr(c, "tags", None) for c in cards)

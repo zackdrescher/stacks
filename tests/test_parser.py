@@ -386,12 +386,12 @@ def test_csv_stack_writer_basic_functionality() -> None:
     # Handle Windows line endings
     lines = [line.rstrip("\r") for line in lines]
 
-    # Check header
-    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price,Tags"
+    # Check header — no tags, so Tags column must be absent
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
 
     # Check data rows
-    assert "1,Lightning Bolt,LEA,,false,10.0," in lines
-    assert "1,Black Lotus,LEA,,true,5000.0," in lines
+    assert "1,Lightning Bolt,LEA,,false,10.0" in lines
+    assert "1,Black Lotus,LEA,,true,5000.0" in lines
     assert len(lines) == 3  # Header + 2 data rows
 
 
@@ -417,8 +417,8 @@ def test_csv_stack_writer_groups_duplicate_prints() -> None:
     lines = [line.rstrip("\r") for line in lines]
 
     # Check that duplicates are grouped with count
-    assert "3,Lightning Bolt,LEA,,false,10.0," in lines
-    assert "1,Black Lotus,LEA,,true,5000.0," in lines
+    assert "3,Lightning Bolt,LEA,,false,10.0" in lines
+    assert "1,Black Lotus,LEA,,true,5000.0" in lines
     assert len(lines) == 3  # Header + 2 data rows (grouped)
 
 
@@ -447,10 +447,10 @@ def test_csv_stack_writer_handles_different_properties() -> None:
     assert len(lines) == 5
 
     # Check all variations are present
-    assert "1,Lightning Bolt,LEA,,false,10.0," in lines
-    assert "1,Lightning Bolt,LEA,,true,15.0," in lines
-    assert "1,Lightning Bolt,ICE,,false,5.0," in lines
-    assert "1,Lightning Bolt,LEA,,false,12.0," in lines
+    assert "1,Lightning Bolt,LEA,,false,10.0" in lines
+    assert "1,Lightning Bolt,LEA,,true,15.0" in lines
+    assert "1,Lightning Bolt,ICE,,false,5.0" in lines
+    assert "1,Lightning Bolt,LEA,,false,12.0" in lines
 
 
 def test_csv_stack_writer_handles_none_values() -> None:
@@ -473,9 +473,9 @@ def test_csv_stack_writer_handles_none_values() -> None:
     lines = [line.rstrip("\r") for line in lines]
 
     # Check that None price is handled as empty string
-    assert "1,Lightning Bolt,LEA,,false,," in lines
+    assert "1,Lightning Bolt,LEA,,false," in lines
     # Check that empty set is handled correctly
-    assert "1,Black Lotus,,,true,5000.0," in lines
+    assert "1,Black Lotus,,,true,5000.0" in lines
 
 
 def test_csv_stack_writer_empty_stack_raises_error() -> None:
@@ -531,9 +531,9 @@ def test_write_csv_collection_content() -> None:
     # Handle Windows line endings
     lines = [line.rstrip("\r") for line in lines]
 
-    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price,Tags"
-    assert "1,Counterspell,ICE,,false,2.5," in lines
-    assert "1,Counterspell,ICE,,true,15.0," in lines
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
+    assert "1,Counterspell,ICE,,false,2.5" in lines
+    assert "1,Counterspell,ICE,,true,15.0" in lines
 
 
 def test_write_csv_collection_file(tmp_path: Path) -> None:
@@ -557,8 +557,64 @@ def test_write_csv_collection_file(tmp_path: Path) -> None:
     lines = content.strip().split("\n")
     # Handle Windows line endings
     lines = [line.rstrip("\r") for line in lines]
-    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price,Tags"
-    assert "2,Lightning Bolt,LEA,,false,10.0," in lines
+    assert lines[0] == "Count,Card Name,Set Name,Collector Number,Foil,Price"
+    assert "2,Lightning Bolt,LEA,,false,10.0" in lines
+
+
+def test_csv_writer_omits_tags_column_when_no_tags() -> None:
+    """Tags column must not appear when no card has tags."""
+    from stacks.stack import Stack
+
+    stack = Stack([Print(name="Lightning Bolt", set="LEA", foil=False)])
+    output = StringIO()
+    CsvStackWriter().write(stack, output)
+
+    header = output.getvalue().splitlines()[0]
+    assert "Tags" not in header
+
+
+def test_csv_writer_includes_tags_column_when_tags_present() -> None:
+    """Tags column must appear when at least one card has tags."""
+    from stacks.stack import Stack
+
+    stack = Stack([Print(name="Lightning Bolt", set="LEA", foil=False, tags={"staple"})])
+    output = StringIO()
+    CsvStackWriter().write(stack, output)
+
+    lines = output.getvalue().splitlines()
+    assert "Tags" in lines[0]
+    assert "staple" in lines[1]
+
+
+def test_scryfall_csv_writer_omits_tags_column_when_no_tags() -> None:
+    """ScryfallCsvStackWriter must omit Tags column when no card has tags."""
+    from stacks.cards.scryfall_card import ScryfallCard
+    from stacks.parsing.csv import ScryfallCsvStackWriter
+    from stacks.stack import Stack
+
+    card = ScryfallCard(name="Lightning Bolt", oracle_id="abc-123")
+    stack = Stack([card])
+    output = StringIO()
+    ScryfallCsvStackWriter().write(stack, output)
+
+    header = output.getvalue().splitlines()[0]
+    assert "Tags" not in header
+
+
+def test_scryfall_csv_writer_includes_tags_column_when_tags_present() -> None:
+    """ScryfallCsvStackWriter must include Tags column when a card has tags."""
+    from stacks.cards.scryfall_card import ScryfallCard
+    from stacks.parsing.csv import ScryfallCsvStackWriter
+    from stacks.stack import Stack
+
+    card = ScryfallCard(name="Lightning Bolt", oracle_id="abc-123", tags={"commander"})
+    stack = Stack([card])
+    output = StringIO()
+    ScryfallCsvStackWriter().write(stack, output)
+
+    lines = output.getvalue().splitlines()
+    assert "Tags" in lines[0]
+    assert "commander" in lines[1]
 
 
 def test_csv_round_trip() -> None:
