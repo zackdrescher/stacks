@@ -381,3 +381,65 @@ class TestSyncCommand:
             include_sideboard=True,
             include_maybeboard=True,
         )
+
+
+class TestPushCollection:
+    SRC = (
+        "Count,Card Name,Set Name,Collector Number,Foil,Price\n"
+        "2,Ugin,Tarkir: Dragonstorm,1,false,40\n"
+        "1,Mystery,Nowhere,5,true,1\n"
+    )
+
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    def _run(self, tmp_path: Path, out_name: str = "out.csv"):  # noqa: ANN202
+        src = tmp_path / "in.csv"
+        src.write_text(self.SRC)
+        out = tmp_path / out_name
+        with patch(
+            "stacks.cli.commands.ScryfallClient.get_set_codes",
+            return_value={"tarkir: dragonstorm": "TDM"},
+        ):
+            result = self.runner.invoke(
+                cli, ["push", "--collection", str(src), str(out)]
+            )
+        return result, out
+
+    def test_collection_success_and_warning(self, tmp_path: Path) -> None:
+        result, out = self._run(tmp_path)
+
+        assert result.exit_code == 0, result.output
+        lines = out.read_text().splitlines()
+        assert lines[0] == "Count,Name,Edition,Collector Number,Foil"
+        assert "2,Ugin,TDM,1," in lines
+        assert "1,Mystery,Nowhere,5,foil" in lines
+        assert "Nowhere" in result.output
+        assert "Collection" in result.output
+
+    def test_collection_requires_csv_output(self, tmp_path: Path) -> None:
+        result, _ = self._run(tmp_path, "out.mox")
+
+        assert result.exit_code != 0
+        assert ".csv" in result.output
+
+    def test_collection_output_round_trips_as_moxfield(self, tmp_path: Path) -> None:
+        from stacks.parsing.io_registry import load_stack_from_file
+
+        _, out = self._run(tmp_path)
+
+        assert len(load_stack_from_file(str(out))) == 3
+
+    def test_collection_scryfall_error(self, tmp_path: Path) -> None:
+        src = tmp_path / "in.csv"
+        src.write_text(self.SRC)
+        with patch(
+            "stacks.cli.commands.ScryfallClient.get_set_codes",
+            side_effect=requests.ConnectionError("down"),
+        ):
+            result = self.runner.invoke(
+                cli, ["push", "--collection", str(src), str(tmp_path / "o.csv")]
+            )
+
+        assert result.exit_code != 0
+        assert "Scryfall" in result.output

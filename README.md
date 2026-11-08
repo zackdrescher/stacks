@@ -78,6 +78,12 @@ stacks push deck.csv deck.mox
 stacks push deck.arena deck.txt
 ```
 
+Use `--collection` to prepare a file for Moxfield's **collection** import (Collection → Add Cards → Import) instead of a deck. It writes a CSV with `Count,Name,Edition,Collector Number,Foil`, converting set names to set codes via Scryfall (needs network access; any sets it can't map are listed as a warning):
+
+```bash
+stacks push --collection export.csv collection.csv
+```
+
 **`sync`** — pull all tracked Moxfield decks from a config file
 
 ```bash

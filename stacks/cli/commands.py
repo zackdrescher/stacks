@@ -10,10 +10,12 @@ import requests
 
 from stacks.moxfield.client import MoxfieldClient
 from stacks.moxfield.puller import MoxfieldPuller
+from stacks.parsing.csv import MoxfieldCollectionCsvWriter
 from stacks.parsing.io_registry import load_stack_from_file, write_stack_to_file
 from stacks.scryfall.client import ScryfallClient
 from stacks.scryfall.scryer import Scryer
 
+from .converters import normalize_stack_for_output
 from .operations import OPERATIONS, perform_stack_operation
 
 if TYPE_CHECKING:
@@ -390,24 +392,57 @@ def pull(source: str, output: Path, token: str | None, sideboard: bool, maybeboa
 @click.command()
 @click.argument("input_file", type=click.Path(exists=True, path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
-def push(input_file: Path, output: Path) -> None:
-    r"""Convert a local deck file to Moxfield-importable format.
+@click.option(
+    "--collection",
+    is_flag=True,
+    default=False,
+    help=(
+        "Write a Moxfield collection-import CSV (Count, Name, Edition, "
+        "Collector Number, Foil) instead of a deck list. OUTPUT must be .csv."
+    ),
+)
+def push(input_file: Path, output: Path, *, collection: bool) -> None:
+    r"""Convert a local file to Moxfield-importable format.
 
-    Reads INPUT_FILE in any supported format and writes OUTPUT as a
-    Moxfield-importable text file. Use a .mox or .txt extension for OUTPUT,
-    then paste the file contents into Moxfield's Import dialog.
+    Reads INPUT_FILE in any supported format. By default writes OUTPUT as a
+    Moxfield deck-list text file (use a .mox or .txt extension), to paste into
+    a deck's Import dialog. With --collection, writes a CSV for Moxfield's
+    collection import (Collection -> Add Cards -> Import); set names are
+    converted to set codes using Scryfall.
 
     Examples:
     \b
         stacks push deck.csv deck.mox
         stacks push deck.arena deck.txt
+        stacks push --collection export.csv collection.csv
 
     """
     try:
+        if collection and output.suffix.lower() != ".csv":
+            msg = "--collection requires OUTPUT to have a .csv extension"
+            raise click.ClickException(msg)
+
         click.echo(f"Loading stack from {input_file}...")
         stack = load_stack_from_file(str(input_file))
-
         output.parent.mkdir(parents=True, exist_ok=True)
+
+        if collection:
+            click.echo("Fetching set codes from Scryfall...")
+            writer = MoxfieldCollectionCsvWriter(ScryfallClient().get_set_codes())
+            prints = normalize_stack_for_output(stack, "csv")
+            click.echo(f"Writing Moxfield collection CSV to {output}...")
+            with output.open("w", encoding="utf-8", newline="") as f:
+                writer.write(prints, f)
+            click.echo(f"Done. {len(stack)} cards written to {output}.")
+            if writer.unresolved_sets:
+                names = ", ".join(sorted(writer.unresolved_sets))
+                click.echo(f"Warning: could not map these sets to codes: {names}")
+            click.echo(
+                "In Moxfield, go to Collection -> Add Cards -> Import "
+                "and upload the file."
+            )
+            return
+
         click.echo(f"Writing Moxfield-importable file to {output}...")
         write_stack_to_file(stack, str(output))
 
@@ -416,6 +451,8 @@ def push(input_file: Path, output: Path) -> None:
 
     except ValueError as e:
         raise click.ClickException(str(e)) from e
+    except requests.RequestException as e:
+        raise click.ClickException(f"Scryfall API error: {e}") from e
     except OSError as e:
         raise click.ClickException(f"File I/O error: {e}") from e
 
