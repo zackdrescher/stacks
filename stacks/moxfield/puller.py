@@ -64,11 +64,10 @@ class MoxfieldPuller:
 
         return Stack(prints)
 
-    def pull_collection(self, collection_id: str, tag: str = "mox_collection") -> Stack[Print]:
-        """Fetch a whole collection and return it as a Stack of Prints.
+    def pull_collection(self, tag: str = "mox_collection") -> Stack[Print]:
+        """Fetch the authenticated user's collection as a Stack of Prints.
 
         Args:
-            collection_id: The Moxfield collection ID.
             tag: Tag applied to every card.
 
         Raises:
@@ -76,7 +75,7 @@ class MoxfieldPuller:
 
         """
         prints: list[Print] = []
-        for entry in self.client.iter_collection(collection_id):
+        for entry in self.client.iter_collection():
             quantity = entry.get("quantity", 1)
             p = self._entry_to_print(entry)
             prints.extend([p] * quantity)
@@ -94,6 +93,13 @@ class MoxfieldPuller:
             prints.extend([p] * quantity)
         return prints
 
+    @staticmethod
+    def _language_code(language: dict | str | None) -> str:
+        """Normalize Moxfield's language (object like {"code": "en"} or str) to a code."""
+        if isinstance(language, dict):
+            return language.get("code") or "en"
+        return language or "en"
+
     def _entry_to_print(self, entry: dict) -> Print:
         """Convert a single board entry dict to a Print."""
         card_data = entry.get("card", {})
@@ -104,5 +110,5 @@ class MoxfieldPuller:
             foil=entry.get("isFoil", False),
             collector_number=card_data.get("cn") or None,
             condition=entry.get("condition") or None,
-            language=entry.get("language") or "en",
+            language=self._language_code(entry.get("language")),
         )

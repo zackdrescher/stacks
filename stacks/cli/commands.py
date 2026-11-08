@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
 import requests
+from dotenv import load_dotenv
 
 from stacks.moxfield.client import MoxfieldClient
 from stacks.moxfield.puller import MoxfieldPuller
@@ -388,30 +390,39 @@ def pull(source: str, output: Path, token: str | None, sideboard: bool, maybeboa
 
 
 @click.command(name="pull-collection")
-@click.argument("collection_id")
 @click.argument("output", type=click.Path(path_type=Path))
 @click.option(
     "--token",
     envvar="MOXFIELD_TOKEN",
     default=None,
-    help="Bearer token (or set MOXFIELD_TOKEN env var). Required for private collections.",
+    help=(
+        "Bearer token (or set MOXFIELD_TOKEN in the environment or a .env file). "
+        "Required: the collection is the token owner's."
+    ),
 )
-def pull_collection(collection_id: str, output: Path, token: str | None) -> None:
+def pull_collection(output: Path, token: str | None) -> None:
     r"""Fetch your Moxfield collection and save it to a local file.
 
+    The collection belonging to the token's account is fetched.
     Output format is inferred from the file extension.
 
     Examples:
     \b
-        stacks pull-collection AbCd1234 collection.csv
+        stacks pull-collection collection.csv
+        stacks pull-collection collection.csv --token eyJ...
 
     """
+    load_dotenv()
+    token = token or os.environ.get("MOXFIELD_TOKEN")
+    if not token:
+        msg = "A Moxfield token is required: pass --token or set MOXFIELD_TOKEN."
+        raise click.ClickException(msg)
     try:
         client = MoxfieldClient(token=token)
         puller = MoxfieldPuller(client)
 
-        click.echo(f"Fetching collection from Moxfield: {collection_id}")
-        stack = puller.pull_collection(collection_id)
+        click.echo("Fetching collection from Moxfield...")
+        stack = puller.pull_collection()
 
         output.parent.mkdir(parents=True, exist_ok=True)
         click.echo(f"Writing {len(stack)} cards to {output}...")

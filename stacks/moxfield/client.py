@@ -11,7 +11,7 @@ class MoxfieldClient:
     """Client for interacting with the Moxfield API."""
 
     BASE_URL = "https://api2.moxfield.com/v2"
-    COLLECTION_URL = "https://api2.moxfield.com/v1/collections/search"
+    COLLECTION_URL = "https://api2.moxfield.com/v1/collections"
     _TIMEOUT = 10
     _SUCCESS_STATUS = 200
     _NOT_FOUND_STATUS = 404
@@ -56,15 +56,13 @@ class MoxfieldClient:
         response.raise_for_status()
         return None
 
-    def get_collection_page(
-        self, collection_id: str, page: int = 1, page_size: int = 100,
-    ) -> dict | None:
-        """Fetch one page of a collection.
+    def get_collection_page(self, page: int = 1, page_size: int = 100) -> dict | None:
+        """Fetch one page of the authenticated user's collection.
 
-        NOTE: the endpoint is undocumented and unverified against the live API.
+        Requires a token; the collection is the token owner's. The endpoint is
+        undocumented but was verified against the live API.
 
         Args:
-            collection_id: The Moxfield collection ID.
             page: 1-indexed page number.
             page_size: Entries per page.
 
@@ -80,7 +78,7 @@ class MoxfieldClient:
             headers["Authorization"] = f"Bearer {self._token}"
 
         response = self._session.get(
-            f"{self.COLLECTION_URL}/{collection_id}",
+            self.COLLECTION_URL,
             headers=headers,
             params={"pageNumber": page, "pageSize": page_size},
             timeout=self._TIMEOUT,
@@ -92,7 +90,7 @@ class MoxfieldClient:
         response.raise_for_status()
         return None
 
-    def iter_collection(self, collection_id: str, page_size: int = 100) -> Iterator[dict]:
+    def iter_collection(self, page_size: int = 100) -> Iterator[dict]:
         """Yield every collection entry, following pagination.
 
         Raises:
@@ -101,9 +99,9 @@ class MoxfieldClient:
         """
         page = 1
         while True:
-            data = self.get_collection_page(collection_id, page, page_size)
+            data = self.get_collection_page(page, page_size)
             if data is None:
-                msg = f"Collection not found: {collection_id}"
+                msg = "Collection not found"
                 raise ValueError(msg)
             yield from data.get("data", [])
             if page >= data.get("totalPages", 1):
