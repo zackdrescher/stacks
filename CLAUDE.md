@@ -71,9 +71,15 @@ CSV reader auto-detects the card type from column headers. All parsers set `card
 
 Entry point: `stacks.cli:cli` (Click group defined in `stacks/cli/__init__.py`).
 
-Commands in `stacks/cli/commands.py`: `difference`, `union`, `intersection`, `enrich`, `filter-stack`, `list-operations`.
+Commands in `stacks/cli/commands.py`: `difference`, `union`, `intersection`, `enrich`, `filter-stack`, `tag`, `pull`, `pull-collection`, `push`, `list-operations`.
 
 `stacks/cli/operations.py` — `StackOperation` registry handles loading inputs, running the operation, and writing output. `stacks/cli/converters.py` — `normalize_stack_for_output()` converts cards to the appropriate type for the output format (e.g. `Card` → `Print` when writing CSV).
+
+### Moxfield Integration
+
+- `stacks/moxfield/client.py` — `MoxfieldClient` (cloudscraper, optional Bearer token). `get_deck()` hits `api2.moxfield.com/v2/decks/all/{id}`; `get_collection_page()` / `iter_collection()` hit `GET /v1/collections` (paginated, returns the token owner's collection, no ID).
+- `stacks/moxfield/puller.py` — `MoxfieldPuller.pull()` (deck) and `pull_collection()` (collection, tagged `mox_collection`) convert API JSON to `Stack[Print]`, expanding quantity into copies. In collection entries `language` is an object (`{"code": "en"}`), handled by `_language_code()`.
+- The API is undocumented and has no username/password flow (login is behind Cloudflare/reCAPTCHA), so the token is copied from browser DevTools and supplied via `--token` or `MOXFIELD_TOKEN` (`.env` is loaded by `pull-collection`).
 
 ### Scryfall Integration
 
