@@ -17,6 +17,7 @@ from .commands import (
     intersection,
     list_operations,
     pull,
+    pull_collection,
     push,
     sync,
     tag,
@@ -39,6 +40,7 @@ cli.add_command(list_operations)
 cli.add_command(enrich)
 cli.add_command(filter_stack)
 cli.add_command(pull)
+cli.add_command(pull_collection)
 cli.add_command(push)
 cli.add_command(sync)
 cli.add_command(tag)

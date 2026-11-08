@@ -200,3 +200,40 @@ class TestMoxfieldPuller:
 
         swamp = next(c for c in result if c.name == "Swamp")
         assert "maybeboard" in swamp.tags
+
+
+class TestPullCollection:
+    def test_pull_collection_expands_quantity_and_tags(self) -> None:
+        client = Mock(spec=MoxfieldClient)
+        client.iter_collection.return_value = iter(
+            [
+                {
+                    "quantity": 2,
+                    "isFoil": True,
+                    "condition": "NearMint",
+                    "language": {"id": "x", "code": "ja", "name": "Japanese"},
+                    "card": {"name": "Lightning Bolt", "set": "lea", "cn": "161"},
+                },
+                {"quantity": 1, "card": {"name": "Island", "set": "unf", "cn": "1"}},
+            ],
+        )
+        stack = MoxfieldPuller(client).pull_collection()
+        assert len(stack) == 3
+        bolt = next(c for c in stack if c.name == "Lightning Bolt")
+        assert bolt.set == "LEA"
+        assert bolt.foil is True
+        assert bolt.condition == "NearMint"
+        assert bolt.language == "ja"
+        assert "mox_collection" in bolt.tags
+
+    def test_pull_collection_propagates_not_found(self) -> None:
+        client = Mock(spec=MoxfieldClient)
+        client.iter_collection.side_effect = ValueError("Collection not found")
+        with pytest.raises(ValueError, match="Collection not found"):
+            MoxfieldPuller(client).pull_collection()
+
+    def test_language_code_handles_dict_str_and_none(self) -> None:
+        assert MoxfieldPuller._language_code({"code": "fr"}) == "fr"
+        assert MoxfieldPuller._language_code({}) == "en"
+        assert MoxfieldPuller._language_code("de") == "de"
+        assert MoxfieldPuller._language_code(None) == "en"
