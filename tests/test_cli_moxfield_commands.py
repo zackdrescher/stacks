@@ -1,7 +1,7 @@
 """Tests for the pull and push CLI commands."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -29,7 +29,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_success(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.return_value = _make_print_stack()
@@ -44,7 +44,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_deck_not_found(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.side_effect = ValueError("Deck not found: bad-id")
@@ -59,7 +59,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_http_error(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.side_effect = requests.HTTPError("403 Forbidden")
@@ -75,7 +75,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_token_forwarded_to_client(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.return_value = _make_print_stack()
@@ -90,7 +90,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_token_from_env_var(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.return_value = _make_print_stack()
@@ -110,7 +110,7 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_no_token_passes_none(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         mock_puller = Mock()
         mock_puller.pull.return_value = _make_print_stack()
@@ -125,10 +125,10 @@ class TestPullCommand:
     @patch("stacks.cli.commands.MoxfieldPuller")
     @patch("stacks.cli.commands.MoxfieldClient")
     def test_pull_shows_card_count(
-        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
     ) -> None:
         stack = Stack(
-            [Print(name=f"Card {i}", set="LEA") for i in range(3)]
+            [Print(name=f"Card {i}", set="LEA") for i in range(3)],
         )
         mock_puller = Mock()
         mock_puller.pull.return_value = stack
@@ -166,7 +166,7 @@ class TestPushCommand:
     def test_push_nonexistent_input_file(self, tmp_path: Path) -> None:
         output = tmp_path / "output.mox"
         result = self.runner.invoke(
-            cli, ["push", str(tmp_path / "missing.mox"), str(output)]
+            cli, ["push", str(tmp_path / "missing.mox"), str(output)],
         )
         assert result.exit_code != 0
 
@@ -198,3 +198,112 @@ class TestPushCommand:
 
         content = output.read_text()
         assert "Lightning Bolt" in content
+
+
+class TestPullCollectionCommand:
+    def setup_method(self) -> None:
+        self.runner = CliRunner()
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_success(
+        self, mock_client_cls: Mock, mock_puller_cls: Mock, mock_write: Mock, tmp_path: Path,
+    ) -> None:
+        mock_puller_cls.return_value.pull_collection.return_value = _make_print_stack()
+        output = tmp_path / "c.csv"
+        result = self.runner.invoke(cli, ["pull-collection", str(output), "--token", "t"])
+        assert result.exit_code == 0
+        mock_client_cls.assert_called_once_with(token="t")
+        mock_write.assert_called_once()
+
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_not_found(self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path) -> None:
+        mock_puller_cls.return_value.pull_collection.side_effect = ValueError("nope")
+        result = self.runner.invoke(
+            cli, ["pull-collection", str(tmp_path / "c.csv"), "--token", "t"],
+        )
+        assert result.exit_code != 0
+        assert "nope" in result.output
+
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_http_error(self, mock_client_cls: Mock, mock_puller_cls: Mock, tmp_path: Path) -> None:
+        mock_puller_cls.return_value.pull_collection.side_effect = requests.HTTPError("403")
+        result = self.runner.invoke(
+            cli, ["pull-collection", str(tmp_path / "c.csv"), "--token", "t"],
+        )
+        assert result.exit_code != 0
+        assert "Moxfield API error" in result.output
+
+    @patch("stacks.cli.commands.load_dotenv")
+    def test_missing_token(
+        self, mock_dotenv: Mock, monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    ) -> None:
+        monkeypatch.delenv("MOXFIELD_TOKEN", raising=False)
+        result = self.runner.invoke(cli, ["pull-collection", str(tmp_path / "c.csv")])
+        assert result.exit_code != 0
+        assert "token is required" in result.output
+        mock_dotenv.assert_called_once()
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    @patch("stacks.cli.commands.load_dotenv")
+    def test_token_from_env(
+        self,
+        mock_dotenv: Mock,
+        mock_client_cls: Mock,
+        mock_puller_cls: Mock,
+        mock_write: Mock,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        monkeypatch.setenv("MOXFIELD_TOKEN", "from-env")
+        mock_puller_cls.return_value.pull_collection.return_value = _make_print_stack()
+        result = self.runner.invoke(cli, ["pull-collection", str(tmp_path / "c.csv")])
+        assert result.exit_code == 0
+        mock_client_cls.assert_called_once_with(token="from-env")
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_token_from_real_dotenv_file(
+        self,
+        mock_client_cls: Mock,
+        mock_puller_cls: Mock,
+        mock_write: Mock,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        # Touch the var first so monkeypatch restores it after load_dotenv sets it.
+        monkeypatch.setenv("MOXFIELD_TOKEN", "placeholder")
+        monkeypatch.delenv("MOXFIELD_TOKEN")
+        (tmp_path / ".env").write_text("MOXFIELD_TOKEN=from-dotenv-file\n")
+        monkeypatch.chdir(tmp_path)
+        mock_puller_cls.return_value.pull_collection.return_value = _make_print_stack()
+
+        result = self.runner.invoke(cli, ["pull-collection", str(tmp_path / "c.csv")])
+
+        assert result.exit_code == 0
+        mock_client_cls.assert_called_once_with(token="from-dotenv-file")
+
+    @patch("stacks.cli.commands.write_stack_to_file")
+    @patch("stacks.cli.commands.MoxfieldPuller")
+    @patch("stacks.cli.commands.MoxfieldClient")
+    def test_os_error(
+        self,
+        mock_client_cls: Mock,
+        mock_puller_cls: Mock,
+        mock_write: Mock,
+        tmp_path: Path,
+    ) -> None:
+        mock_puller_cls.return_value.pull_collection.return_value = _make_print_stack()
+        mock_write.side_effect = OSError("disk full")
+        result = self.runner.invoke(
+            cli, ["pull-collection", str(tmp_path / "c.csv"), "--token", "t"],
+        )
+        assert result.exit_code != 0
+        assert "File I/O error" in result.output
+        assert "disk full" in result.output
