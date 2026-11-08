@@ -64,6 +64,27 @@ class MoxfieldPuller:
 
         return Stack(prints)
 
+    def pull_collection(self, collection_id: str, tag: str = "mox_collection") -> Stack[Print]:
+        """Fetch a whole collection and return it as a Stack of Prints.
+
+        Args:
+            collection_id: The Moxfield collection ID.
+            tag: Tag applied to every card.
+
+        Raises:
+            ValueError: If the collection is not found.
+
+        """
+        prints: list[Print] = []
+        for entry in self.client.iter_collection(collection_id):
+            quantity = entry.get("quantity", 1)
+            p = self._entry_to_print(entry)
+            prints.extend([p] * quantity)
+
+        stack = Stack(prints)
+        stack.add_tag(tag)
+        return stack
+
     def _parse_board(self, board: dict) -> list[Print]:
         """Parse a board dict into a flat list of Print objects (one per copy)."""
         prints = []
@@ -82,4 +103,6 @@ class MoxfieldPuller:
             set=raw_set.upper(),
             foil=entry.get("isFoil", False),
             collector_number=card_data.get("cn") or None,
+            condition=entry.get("condition") or None,
+            language=entry.get("language") or "en",
         )

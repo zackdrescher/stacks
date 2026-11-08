@@ -108,3 +108,51 @@ class TestMoxfieldClient:
     def test_extract_deck_id_preserves_special_chars(self) -> None:
         result = MoxfieldClient.extract_deck_id("https://moxfield.com/decks/c7i_hkTuM0mZ4aCDUZbULQ")
         assert result == "c7i_hkTuM0mZ4aCDUZbULQ"
+
+
+class TestMoxfieldClientCollection:
+    def setup_method(self) -> None:
+        self.client = MoxfieldClient(token="tok")
+        self.mock_get = Mock()
+        self.client._session = Mock()
+        self.client._session.get = self.mock_get
+
+    @staticmethod
+    def _resp(status: int, json_data: dict | None = None) -> Mock:
+        resp = Mock()
+        resp.status_code = status
+        if json_data is not None:
+            resp.json.return_value = json_data
+        return resp
+
+    def test_get_collection_page_success(self) -> None:
+        self.mock_get.return_value = self._resp(200, {"data": [], "totalPages": 1})
+        assert self.client.get_collection_page("abc", 2, 50) == {"data": [], "totalPages": 1}
+        args, kwargs = self.mock_get.call_args
+        assert args[0] == f"{MoxfieldClient.COLLECTION_URL}/abc"
+        assert kwargs["params"] == {"pageNumber": 2, "pageSize": 50}
+        assert kwargs["headers"]["Authorization"] == "Bearer tok"
+
+    def test_get_collection_page_not_found(self) -> None:
+        self.mock_get.return_value = self._resp(404)
+        assert self.client.get_collection_page("abc") is None
+
+    def test_get_collection_page_error_raises(self) -> None:
+        resp = self._resp(500)
+        resp.raise_for_status.side_effect = requests.HTTPError("boom")
+        self.mock_get.return_value = resp
+        with pytest.raises(requests.HTTPError):
+            self.client.get_collection_page("abc")
+
+    def test_iter_collection_paginates(self) -> None:
+        self.mock_get.side_effect = [
+            self._resp(200, {"data": [{"a": 1}], "totalPages": 2}),
+            self._resp(200, {"data": [{"a": 2}], "totalPages": 2}),
+        ]
+        assert list(self.client.iter_collection("abc")) == [{"a": 1}, {"a": 2}]
+        assert self.mock_get.call_count == 2
+
+    def test_iter_collection_not_found(self) -> None:
+        self.mock_get.return_value = self._resp(404)
+        with pytest.raises(ValueError, match="Collection not found"):
+            list(self.client.iter_collection("abc"))

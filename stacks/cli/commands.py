@@ -387,6 +387,45 @@ def pull(source: str, output: Path, token: str | None, sideboard: bool, maybeboa
         raise click.ClickException(f"File I/O error: {e}") from e
 
 
+@click.command(name="pull-collection")
+@click.argument("collection_id")
+@click.argument("output", type=click.Path(path_type=Path))
+@click.option(
+    "--token",
+    envvar="MOXFIELD_TOKEN",
+    default=None,
+    help="Bearer token (or set MOXFIELD_TOKEN env var). Required for private collections.",
+)
+def pull_collection(collection_id: str, output: Path, token: str | None) -> None:
+    r"""Fetch your Moxfield collection and save it to a local file.
+
+    Output format is inferred from the file extension.
+
+    Examples:
+    \b
+        stacks pull-collection AbCd1234 collection.csv
+
+    """
+    try:
+        client = MoxfieldClient(token=token)
+        puller = MoxfieldPuller(client)
+
+        click.echo(f"Fetching collection from Moxfield: {collection_id}")
+        stack = puller.pull_collection(collection_id)
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        click.echo(f"Writing {len(stack)} cards to {output}...")
+        write_stack_to_file(stack, str(output))
+        click.echo(f"Done. Saved {len(stack)} cards to {output}.")
+
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+    except requests.HTTPError as e:
+        raise click.ClickException(f"Moxfield API error: {e}") from e
+    except OSError as e:
+        raise click.ClickException(f"File I/O error: {e}") from e
+
+
 @click.command()
 @click.argument("input_file", type=click.Path(exists=True, path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
