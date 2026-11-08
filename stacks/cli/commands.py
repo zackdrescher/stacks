@@ -12,10 +12,12 @@ from dotenv import load_dotenv
 
 from stacks.moxfield.client import MoxfieldClient
 from stacks.moxfield.puller import MoxfieldPuller
+from stacks.parsing.csv import MoxfieldCollectionCsvWriter
 from stacks.parsing.io_registry import load_stack_from_file, write_stack_to_file
 from stacks.scryfall.client import ScryfallClient
 from stacks.scryfall.scryer import Scryer
 
+from .converters import normalize_stack_for_output
 from .operations import OPERATIONS, perform_stack_operation
 
 if TYPE_CHECKING:
@@ -440,24 +442,57 @@ def pull_collection(output: Path, token: str | None) -> None:
 @click.command()
 @click.argument("input_file", type=click.Path(exists=True, path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
-def push(input_file: Path, output: Path) -> None:
-    r"""Convert a local deck file to Moxfield-importable format.
+@click.option(
+    "--collection",
+    is_flag=True,
+    default=False,
+    help=(
+        "Write a Moxfield collection-import CSV (Count, Name, Edition, "
+        "Collector Number, Foil) instead of a deck list. OUTPUT must be .csv."
+    ),
+)
+def push(input_file: Path, output: Path, *, collection: bool) -> None:
+    r"""Convert a local file to Moxfield-importable format.
 
-    Reads INPUT_FILE in any supported format and writes OUTPUT as a
-    Moxfield-importable text file. Use a .mox or .txt extension for OUTPUT,
-    then paste the file contents into Moxfield's Import dialog.
+    Reads INPUT_FILE in any supported format. By default writes OUTPUT as a
+    Moxfield deck-list text file (use a .mox or .txt extension), to paste into
+    a deck's Import dialog. With --collection, writes a CSV for Moxfield's
+    collection import (Collection -> Add Cards -> Import); set names are
+    converted to set codes using Scryfall.
 
     Examples:
     \b
         stacks push deck.csv deck.mox
         stacks push deck.arena deck.txt
+        stacks push --collection export.csv collection.csv
 
     """
     try:
+        if collection and output.suffix.lower() != ".csv":
+            msg = "--collection requires OUTPUT to have a .csv extension"
+            raise click.ClickException(msg)
+
         click.echo(f"Loading stack from {input_file}...")
         stack = load_stack_from_file(str(input_file))
-
         output.parent.mkdir(parents=True, exist_ok=True)
+
+        if collection:
+            click.echo("Fetching set codes from Scryfall...")
+            writer = MoxfieldCollectionCsvWriter(ScryfallClient().get_set_codes())
+            prints = normalize_stack_for_output(stack, "csv")
+            click.echo(f"Writing Moxfield collection CSV to {output}...")
+            with output.open("w", encoding="utf-8", newline="") as f:
+                writer.write(prints, f)
+            click.echo(f"Done. {len(stack)} cards written to {output}.")
+            if writer.unresolved_sets:
+                names = ", ".join(sorted(writer.unresolved_sets))
+                click.echo(f"Warning: could not map these sets to codes: {names}")
+            click.echo(
+                "In Moxfield, go to Collection -> Add Cards -> Import "
+                "and upload the file."
+            )
+            return
+
         click.echo(f"Writing Moxfield-importable file to {output}...")
         write_stack_to_file(stack, str(output))
 
@@ -466,5 +501,85 @@ def push(input_file: Path, output: Path) -> None:
 
     except ValueError as e:
         raise click.ClickException(str(e)) from e
+    except requests.RequestException as e:
+        raise click.ClickException(f"Scryfall API error: {e}") from e
     except OSError as e:
         raise click.ClickException(f"File I/O error: {e}") from e
+
+
+@click.command()
+@click.option(
+    "--config",
+    type=click.Path(path_type=Path),
+    default="data/tracked_decks.json",
+    show_default=True,
+    envvar="STACKS_TRACKED_DECKS",
+    help="Path to tracked decks config file (or set STACKS_TRACKED_DECKS env var).",
+)
+@click.option(
+    "--token",
+    envvar="MOXFIELD_TOKEN",
+    default=None,
+    help="Bearer token for private decks (or set MOXFIELD_TOKEN env var).",
+)
+@click.option("--sideboard", "-s", is_flag=True, default=False, help="Include sideboard for all decks.")
+@click.option("--maybeboard", "-m", is_flag=True, default=False, help="Include maybeboard for all decks.")
+def sync(config: Path, token: str | None, sideboard: bool, maybeboard: bool) -> None:
+    r"""Pull all tracked Moxfield decks from a config file.
+
+    Reads a JSON config file listing Moxfield deck URLs and their output paths,
+    then pulls each deck. Edit the config file to add or remove tracked decks.
+
+    The --sideboard and --maybeboard flags override the per-deck config settings.
+
+    Config file format:
+    \b
+        {
+          "decks": [
+            {
+              "url": "https://moxfield.com/decks/AbCd1234",
+              "output": "data/decks/my_deck.moxfield",
+              "sideboard": false,
+              "maybeboard": false
+            }
+          ]
+        }
+
+    Examples:
+    \b
+        stacks sync
+        stacks sync --sideboard --maybeboard
+        stacks sync --config path/to/tracked_decks.json
+
+    """
+    from stacks.tracking import load_tracked_decks
+
+    try:
+        tracked = load_tracked_decks(config)
+    except FileNotFoundError as e:
+        raise click.ClickException(str(e)) from e
+
+    if not tracked.decks:
+        click.echo("No decks tracked. Add entries to the config file.")
+        return
+
+    client = MoxfieldClient(token=token)
+    puller = MoxfieldPuller(client)
+
+    errors: list[str] = []
+    for deck in tracked.decks:
+        try:
+            stack = puller.pull(
+                deck.url,
+                include_sideboard=sideboard or deck.sideboard,
+                include_maybeboard=maybeboard or deck.maybeboard,
+            )
+            output_path = Path(deck.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            write_stack_to_file(stack, str(output_path))
+            click.echo(f"Pulled {deck.url} → {deck.output} ({len(stack)} cards)")
+        except (ValueError, requests.HTTPError, OSError) as e:
+            errors.append(f"{deck.url}: {e}")
+            click.echo(f"Failed {deck.url}: {e}")
+
+    click.echo(f"\nSync complete: {len(tracked.decks) - len(errors)} succeeded, {len(errors)} failed.")

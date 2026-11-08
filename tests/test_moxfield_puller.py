@@ -171,6 +171,36 @@ class TestMoxfieldPuller:
         assert isinstance(bolt, Print)
         assert bolt.foil is False
 
+    def test_sideboard_cards_tagged(self) -> None:
+        self.mock_client.get_deck.return_value = SAMPLE_DECK
+
+        result = self.puller.pull("AbCd1234", include_sideboard=True)
+
+        island = next(c for c in result if c.name == "Island")
+        assert "sideboard" in island.tags
+
+    def test_mainboard_cards_not_tagged_sideboard(self) -> None:
+        self.mock_client.get_deck.return_value = SAMPLE_DECK
+
+        result = self.puller.pull("AbCd1234", include_sideboard=True)
+
+        bolt = next(c for c in result if c.name == "Lightning Bolt")
+        assert "sideboard" not in bolt.tags
+
+    def test_maybeboard_cards_tagged(self) -> None:
+        deck = {
+            **SAMPLE_DECK,
+            "maybeboard": {
+                "Swamp": {"quantity": 1, "isFoil": False, "card": {"name": "Swamp", "set": "lea", "cn": "294"}},
+            },
+        }
+        self.mock_client.get_deck.return_value = deck
+
+        result = self.puller.pull("AbCd1234", include_maybeboard=True)
+
+        swamp = next(c for c in result if c.name == "Swamp")
+        assert "maybeboard" in swamp.tags
+
 
 class TestPullCollection:
     def test_pull_collection_expands_quantity_and_tags(self) -> None:

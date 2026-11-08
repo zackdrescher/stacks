@@ -29,7 +29,8 @@ poetry run stacks <command> [args]
 | `tag INPUT_FILE OUTPUT TAGS...` | Add one or more tags to every card |
 | `pull SOURCE OUTPUT [--token] [--sideboard] [--maybeboard]` | Fetch a deck from Moxfield |
 | `pull-collection OUTPUT [--token]` | Fetch your Moxfield collection (requires a token) |
-| `push INPUT_FILE OUTPUT` | Convert a deck file to a Moxfield-importable format |
+| `push INPUT_FILE OUTPUT [--collection]` | Convert a file to a Moxfield-importable format; `--collection` writes a collection-import CSV (set names mapped to codes via Scryfall) |
+| `sync [--config] [--token] [--sideboard] [--maybeboard]` | Pull all decks tracked in `data/tracked_decks.json` |
 | `list-operations` | List available stack operations |
 
 Run `poetry run stacks <command> --help` for full option details and examples.
@@ -49,6 +50,9 @@ poetry run stacks difference collection.csv deck.arena missing.csv
 # Pull a deck from Moxfield and convert formats
 poetry run stacks pull https://moxfield.com/decks/AbCd1234 deck.csv --sideboard
 poetry run stacks push deck.csv deck.mox
+
+# Prepare a CSV from another site for Moxfield's collection import
+poetry run stacks push --collection export.csv collection.csv
 
 # Pull your own Moxfield collection (needs MOXFIELD_TOKEN, see below)
 poetry run stacks pull-collection collection.csv

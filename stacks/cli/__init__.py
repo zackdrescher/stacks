@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import click
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Import parsing modules to ensure readers/writers are registered
 import stacks.parsing  # noqa: F401
@@ -16,6 +19,7 @@ from .commands import (
     pull,
     pull_collection,
     push,
+    sync,
     tag,
     union,
 )
@@ -38,4 +42,5 @@ cli.add_command(filter_stack)
 cli.add_command(pull)
 cli.add_command(pull_collection)
 cli.add_command(push)
+cli.add_command(sync)
 cli.add_command(tag)

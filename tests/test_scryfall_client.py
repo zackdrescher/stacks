@@ -123,3 +123,32 @@ class TestScryfallClient:
         """Test that HTTP status constants are set."""
         assert self.client._SUCCESS_STATUS == 200
         assert self.client._NOT_FOUND_STATUS == 404
+
+
+class TestGetSetCodes:
+    """Test cases for ScryfallClient.get_set_codes."""
+
+    @patch("stacks.scryfall.client.requests.get")
+    def test_get_set_codes_maps_name_to_upper_code(self, mock_get: Mock) -> None:
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "data": [
+                {"name": "Tarkir: Dragonstorm", "code": "tdm"},
+                {"name": "Dupe", "code": "aaa"},
+                {"name": "Dupe", "code": "bbb"},
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        result = ScryfallClient().get_set_codes()
+
+        assert result == {"tarkir: dragonstorm": "TDM", "dupe": "AAA"}
+
+    @patch("stacks.scryfall.client.requests.get")
+    def test_get_set_codes_raises_on_http_error(self, mock_get: Mock) -> None:
+        mock_response = Mock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError("boom")
+        mock_get.return_value = mock_response
+
+        with pytest.raises(requests.HTTPError):
+            ScryfallClient().get_set_codes()

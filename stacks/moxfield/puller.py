@@ -58,9 +58,9 @@ class MoxfieldPuller:
         prints.extend(self._parse_board(data.get("mainboard", {})))
         prints.extend(self._parse_board(data.get("commanders", {})))
         if include_sideboard:
-            prints.extend(self._parse_board(data.get("sideboard", {})))
+            prints.extend(self._parse_board(data.get("sideboard", {}), tag="sideboard"))
         if include_maybeboard:
-            prints.extend(self._parse_board(data.get("maybeboard", {})))
+            prints.extend(self._parse_board(data.get("maybeboard", {}), tag="maybeboard"))
 
         return Stack(prints)
 
@@ -84,12 +84,14 @@ class MoxfieldPuller:
         stack.add_tag(tag)
         return stack
 
-    def _parse_board(self, board: dict) -> list[Print]:
+    def _parse_board(self, board: dict, tag: str | None = None) -> list[Print]:
         """Parse a board dict into a flat list of Print objects (one per copy)."""
         prints = []
         for entry in board.values():
             quantity = entry.get("quantity", 1)
             p = self._entry_to_print(entry)
+            if tag:
+                p = p.model_copy(update={"tags": p.tags | {tag}})
             prints.extend([p] * quantity)
         return prints
 

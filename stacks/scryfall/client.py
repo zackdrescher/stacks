@@ -47,3 +47,25 @@ class ScryfallClient:
             return None
         response.raise_for_status()
         return None
+
+    def get_set_codes(self) -> dict[str, str]:
+        """Fetch all Scryfall sets and map lowercase set name to uppercase code.
+
+        Returns:
+            Dictionary of lowercase set name -> uppercase set code. When two sets
+            share a name, the first one returned by Scryfall wins.
+
+        Raises:
+            requests.HTTPError: If the API request fails with an error status
+
+        """
+        response = requests.get(
+            f"{self.BASE_URL}/sets",
+            headers={"User-Agent": "stacks-cli/1.0", "Accept": "application/json"},
+            timeout=self._TIMEOUT,
+        )
+        response.raise_for_status()
+        codes: dict[str, str] = {}
+        for entry in response.json().get("data", []):
+            codes.setdefault(entry["name"].lower(), entry["code"].upper())
+        return codes

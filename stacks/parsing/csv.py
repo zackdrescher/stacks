@@ -612,6 +612,71 @@ class CsvStackWriter(StackWriter[Print]):
         return {print_objects[key]: count for key, count in print_counts.items()}
 
 
+class MoxfieldCollectionCsvWriter(StackWriter[Print]):
+    """Writer for Moxfield collection-import CSV files.
+
+    Not registered by extension (``.csv`` belongs to ``CsvStackWriter``); callers
+    instantiate it directly. Columns: Count, Name, Edition, Collector Number, Foil.
+    """
+
+    FIELDNAMES = ("Count", "Name", "Edition", "Collector Number", "Foil")
+
+    def __init__(self, set_codes: dict[str, str] | None = None) -> None:
+        """Create a writer.
+
+        Args:
+            set_codes: Mapping of lowercase set name -> set code, used to turn
+                set names into Moxfield ``Edition`` codes.
+
+        """
+        self._set_codes = set_codes or {}
+        self._known_codes = set(self._set_codes.values())
+        self.unresolved_sets: set[str] = set()
+
+    def _edition(self, set_value: str | None) -> str:
+        """Resolve a set name or code to an Edition code."""
+        if not set_value:
+            return ""
+        value = set_value.strip()
+        if value.upper() in self._known_codes:
+            return value.upper()
+        code = self._set_codes.get(value.lower())
+        if code:
+            return code
+        self.unresolved_sets.add(value)
+        return value
+
+    def write(self, stack: Stack[Print], file: IO) -> None:
+        """Write a Stack of Prints to a Moxfield collection CSV.
+
+        Args:
+            stack: Stack of prints to write.
+            file: File-like object to write CSV content to.
+
+        Raises:
+            ValueError: If the stack is empty.
+
+        """
+        if len(list(stack)) == 0:
+            msg = "Cannot write an empty stack"
+            raise ValueError(msg)
+
+        counts: dict[tuple, int] = {}
+        for item in stack:
+            key = (
+                item.name,
+                self._edition(item.set),
+                getattr(item, "collector_number", None) or "",
+                bool(item.foil),
+            )
+            counts[key] = counts.get(key, 0) + 1
+
+        writer = csv.writer(file)
+        writer.writerow(self.FIELDNAMES)
+        for (name, edition, number, foil), count in counts.items():
+            writer.writerow([count, name, edition, number, "foil" if foil else ""])
+
+
 @register_writer("scryfall_csv")
 class ScryfallCsvStackWriter(StackWriter):
     """Writer for CSV collection files with ScryfallCard data."""
